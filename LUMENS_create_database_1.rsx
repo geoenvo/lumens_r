@@ -12,6 +12,8 @@
 
 library(stringr)
 
+time_start<-paste(eval(parse(text=(paste("Sys.time ()")))), sep="")
+
 #build LUMENS project folder structure
 setwd(working_directory)
 project<-str_replace_all(string=project, pattern=" ", repl="_")
