@@ -1,5 +1,5 @@
-##[TA]=group
-##working_dir=folder
+#Regional Economy Single I-O Descriptive Analysis
+##[Alpha - TA]=group
 ##int_con_file=file
 ##add_val_file=file
 ##fin_dem_file=file
@@ -17,6 +17,15 @@ library(foreign)
 library(rtf)
 
 time_start<-paste(eval(parse(text=(paste("Sys.time ()")))), sep="")
+
+user_temp_folder<-Sys.getenv("TEMP")
+if(user_temp_folder=="") {
+  user_temp_folder<-Sys.getenv("TMP")
+}
+LUMENS_path_user <- paste(user_temp_folder,"/LUMENS/LUMENS.log", sep="")
+log.file<-read.table(LUMENS_path_user, header=FALSE, sep=",")
+working_dir<-paste(log.file[1,1], "/", log.file[1,2],"/TA/Single_IO", sep="")
+dir.create(working_dir)
 
 #SET WORKING DIRECTORY
 setwd(working_dir)
@@ -53,13 +62,13 @@ cat(I_O_period)
 sink()
 
 #READ INPUT FILE
-int_con<- read.table(int_con_file, header=FALSE, sep=",",)
-add_val<- read.table(add_val_file, header=FALSE, sep=",",)
-fin_dem<- read.table(fin_dem_file, header=FALSE, sep=",",)
-fin_dem_struc<- read.table(fin_dem_struc_file, header=FALSE, sep=",",)
-add_val_struc<- read.table(add_val_struc_file, header=FALSE, sep=",",)
-sector<- read.table(sector_file, header=FALSE, sep=",",)
-labour<- read.table(labour_file, header=FALSE, sep=",",)
+int_con<- read.table(int_con_file, header=FALSE, sep=",")
+add_val<- read.table(add_val_file, header=FALSE, sep=",")
+fin_dem<- read.table(fin_dem_file, header=FALSE, sep=",")
+fin_dem_struc<- read.table(fin_dem_struc_file, header=FALSE, sep=",")
+add_val_struc<- read.table(add_val_struc_file, header=FALSE, sep=",")
+sector<- read.table(sector_file, header=FALSE, sep=",")
+labour<- read.table(labour_file, header=FALSE, sep=",")
 int_con.m<-as.matrix(int_con)
 add_val.m<-as.matrix(add_val)
 dim<-ncol(int_con.m)
@@ -285,9 +294,3 @@ addNewLine(rtffile)
 addPlot(rtffile,plot.fun=print, width=5,height=3,res=300,LMPL_graph)
 addParagraph(rtffile, "\\b\\fs20 Figure 5. Twenty sectors with highest Labour multiplier\\b0\\fs20.")
 done(rtffile)
-
-
-
-
-
-

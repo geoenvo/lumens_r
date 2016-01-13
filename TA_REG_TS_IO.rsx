@@ -1,5 +1,5 @@
-##[TA]=group
-##work_dir=folder
+#Regional Economy Multiple Time Series I-O Descriptive Analysis
+##Alpha - TA=group
 ##int_con_file_1=file
 ##int_con_file_2=file
 ##add_val_file_1=file
@@ -22,6 +22,15 @@ library(foreign)
 library(rtf)
 
 time_start<-paste(eval(parse(text=(paste("Sys.time ()")))), sep="")
+
+user_temp_folder<-Sys.getenv("TEMP")
+if(user_temp_folder=="") {
+  user_temp_folder<-Sys.getenv("TMP")
+}
+LUMENS_path_user <- paste(user_temp_folder,"/LUMENS/LUMENS.log", sep="")
+log.file<-read.table(LUMENS_path_user, header=FALSE, sep=",")
+work_dir<-paste(log.file[1,1], "/", log.file[1,2],"/TA/MultipleTimeSeries_IO", sep="")
+dir.create(work_dir)
 
 # SET WORKING DIRECTORY
 setwd(work_dir)
