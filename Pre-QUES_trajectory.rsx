@@ -4,9 +4,6 @@
 ##statuscode=output table
 ##statusmessage=output table
 
-Look_up_table="C:/LUMENS_Papua/Kab_Asmat/5_Data_tabular/Tabel_acuan_tutupan_lahan.csv"
-raster.nodata= 0
-
 library(rasterVis)
 library(reshape2)
 library(plyr)
