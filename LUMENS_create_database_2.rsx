@@ -14,6 +14,8 @@ LUMENS_path<-dirname(proj.file)
 project<-as.character(proj_descr[1,2])
 setwd(dirname(proj.file))
 
+p.admin.df<-read.table(p.admin.df, header=TRUE, sep=",")
+
 colnames(p.admin.df)[1]="ADMIN_UNIT"
 
 myColors1 <- brewer.pal(9,"Set1")
@@ -32,6 +34,7 @@ if (0 %in% p.admin.df$IDADM){
   myColors  <-c(myColors7,myColors1, myColors2, myColors3, myColors4, myColors5, myColors6)
 }
 
+field_attribute<-names(p.admin.df)[2]
 myColors.lu <- myColors[1:(length(unique(p.admin.df$IDADM))+1)]
 ColScale.lu<-scale_fill_manual(name=field_attribute, breaks=c(0, p.admin.df$IDADM), labels=c("NoData", as.character(p.admin.df$ADMIN_UNIT)), values=myColors.lu)
 plot3<-gplot(ref, maxpixels=100000) + geom_raster(aes(fill=as.factor(value))) +
