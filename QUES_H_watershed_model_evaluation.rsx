@@ -1,5 +1,5 @@
-##[QUES]=group
-##Wdir=folder
+#QUES-H Watershed Model Evaluation
+##Alpha - QUES=group
 ##location=string
 ##init.date=string
 ##final.date=string
@@ -17,6 +17,15 @@ library(rtf)
 library(reshape)
 library(pastecs)
 
+user_temp_folder<-Sys.getenv("TEMP")
+if(user_temp_folder=="") {
+  user_temp_folder<-Sys.getenv("TMP")
+}
+LUMENS_path_user <- paste(user_temp_folder,"/LUMENS/LUMENS.log", sep="")
+log.file<-read.table(LUMENS_path_user, header=FALSE, sep=",")
+Wdir<-paste(log.file[1,1], "/", log.file[1,2],"/QUES/QUES-H/WatershedEvaluation", sep="")
+dir.create(Wdir)
+
 workd<-Wdir
 setwd(workd)
 time_start<-paste(eval(parse(text=(paste("Sys.time ()")))), sep="")
@@ -24,13 +33,13 @@ time_start<-paste(eval(parse(text=(paste("Sys.time ()")))), sep="")
 # Step 1: Excecute SWAT2009
 #check swat availability
 if (file.exists("SWAT2009.exe")==TRUE){
-if (swatrun==1){
-system("SWAT2009.exe")
+  if (swatrun==1){
+    system("SWAT2009.exe")
+  } else{
+    print("SWAT model skipped")
+  }
 } else{
-print("SWAT model skipped")
-}
-} else{
-print("SWAT model not available in TxtInOut Directory")
+  print("SWAT model not available in TxtInOut Directory")
 }
 
 # Step 2: Read observed and simulated files
@@ -79,9 +88,9 @@ odebit.year<-2
 annual.sum.odebit<-as.data.frame(c(sum(odebit.c[1:31,odebit.year]),sum(odebit.c[32:59,odebit.year]),sum(odebit.c[60:90,odebit.year]),sum(odebit.c[91:120,odebit.year]),sum(odebit.c[121:151,odebit.year]),sum(odebit.c[152:181,odebit.year]),sum(odebit.c[182:212,odebit.year]),sum(odebit.c[213:243,odebit.year]),sum(odebit.c[244:273,odebit.year]),sum(odebit.c[274:304,odebit.year]),sum(odebit.c[305:334,odebit.year]),sum(odebit.c[335:365,odebit.year])), header=T)
 while(odebit.year <= (period.count))
 {
-odebit.year<-odebit.year+1
-annual.sum.odebit2<-as.data.frame(c(sum(odebit.c[1:31,odebit.year]),sum(odebit.c[32:59,odebit.year]),sum(odebit.c[60:90,odebit.year]),sum(odebit.c[91:120,odebit.year]),sum(odebit.c[121:151,odebit.year]),sum(odebit.c[152:181,odebit.year]),sum(odebit.c[182:212,odebit.year]),sum(odebit.c[213:243,odebit.year]),sum(odebit.c[244:273,odebit.year]),sum(odebit.c[274:304,odebit.year]),sum(odebit.c[305:334,odebit.year]),sum(odebit.c[335:365,odebit.year])), header=T)
-annual.sum.odebit<-rbind(annual.sum.odebit, annual.sum.odebit2)
+  odebit.year<-odebit.year+1
+  annual.sum.odebit2<-as.data.frame(c(sum(odebit.c[1:31,odebit.year]),sum(odebit.c[32:59,odebit.year]),sum(odebit.c[60:90,odebit.year]),sum(odebit.c[91:120,odebit.year]),sum(odebit.c[121:151,odebit.year]),sum(odebit.c[152:181,odebit.year]),sum(odebit.c[182:212,odebit.year]),sum(odebit.c[213:243,odebit.year]),sum(odebit.c[244:273,odebit.year]),sum(odebit.c[274:304,odebit.year]),sum(odebit.c[305:334,odebit.year]),sum(odebit.c[335:365,odebit.year])), header=T)
+  annual.sum.odebit<-rbind(annual.sum.odebit, annual.sum.odebit2)
 }
 colnames(annual.sum.odebit)<-as.character("obs.Debit")
 
@@ -95,9 +104,9 @@ mdebit.year<-2
 annual.sum.mdebit<-as.data.frame(c(sum(mdebit.c[1:31,mdebit.year]),sum(mdebit.c[32:59,mdebit.year]),sum(mdebit.c[60:90,mdebit.year]),sum(mdebit.c[91:120,mdebit.year]),sum(mdebit.c[121:151,mdebit.year]),sum(mdebit.c[152:181,mdebit.year]),sum(mdebit.c[182:212,mdebit.year]),sum(mdebit.c[213:243,mdebit.year]),sum(mdebit.c[244:273,mdebit.year]),sum(mdebit.c[274:304,mdebit.year]),sum(mdebit.c[305:334,mdebit.year]),sum(mdebit.c[335:365,mdebit.year])), header=T)
 while(mdebit.year <= (period.count))
 {
-mdebit.year<-mdebit.year+1
-annual.sum.mdebit2<-as.data.frame(c(sum(mdebit.c[1:31,mdebit.year]),sum(mdebit.c[32:59,mdebit.year]),sum(mdebit.c[60:90,mdebit.year]),sum(mdebit.c[91:120,mdebit.year]),sum(mdebit.c[121:151,mdebit.year]),sum(mdebit.c[152:181,mdebit.year]),sum(mdebit.c[182:212,mdebit.year]),sum(mdebit.c[213:243,mdebit.year]),sum(mdebit.c[244:273,mdebit.year]),sum(mdebit.c[274:304,mdebit.year]),sum(mdebit.c[305:334,mdebit.year]),sum(mdebit.c[335:365,mdebit.year])), header=T)
-annual.sum.mdebit<-rbind(annual.sum.mdebit, annual.sum.mdebit2)
+  mdebit.year<-mdebit.year+1
+  annual.sum.mdebit2<-as.data.frame(c(sum(mdebit.c[1:31,mdebit.year]),sum(mdebit.c[32:59,mdebit.year]),sum(mdebit.c[60:90,mdebit.year]),sum(mdebit.c[91:120,mdebit.year]),sum(mdebit.c[121:151,mdebit.year]),sum(mdebit.c[152:181,mdebit.year]),sum(mdebit.c[182:212,mdebit.year]),sum(mdebit.c[213:243,mdebit.year]),sum(mdebit.c[244:273,mdebit.year]),sum(mdebit.c[274:304,mdebit.year]),sum(mdebit.c[305:334,mdebit.year]),sum(mdebit.c[335:365,mdebit.year])), header=T)
+  annual.sum.mdebit<-rbind(annual.sum.mdebit, annual.sum.mdebit2)
 }
 colnames(annual.sum.mdebit)<-as.character("pred.Debit")
 mod.month<-as.character(seq(as.Date(init.date, "%d/%m/%Y"), as.Date(final.date, "%d/%m/%Y"), "months")); #create date sequence

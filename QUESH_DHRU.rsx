@@ -1,5 +1,5 @@
-##[QUES]=group
-##work_dir=folder
+#QUES-H Dominant HRU HRU Definition
+##Alpha - QUES=group
 ##landuse_map=raster
 ##soil_map=raster
 ##slope_map=raster
@@ -19,7 +19,6 @@
 ##HRU=output table
 ##passfilenames
 
-library(raster)
 library(rasterVis)
 library(reshape2)
 library(plyr)
@@ -34,7 +33,18 @@ library(pander)
 library(rtf)
 library(foreign)
 
-#set project properties
+time_start<-paste(eval(parse(text=(paste("Sys.time ()")))), sep="")
+
+user_temp_folder<-Sys.getenv("TEMP")
+if(user_temp_folder=="") {
+  user_temp_folder<-Sys.getenv("TMP")
+}
+LUMENS_path_user <- paste(user_temp_folder,"/LUMENS/LUMENS.log", sep="")
+log.file<-read.table(LUMENS_path_user, header=FALSE, sep=",")
+work_dir<-paste(log.file[1,1], "/", log.file[1,2],"/QUES/QUES-H/DHRU", sep="")
+dir.create(work_dir)
+
+#SET WORKING DIRECTORY
 setwd(work_dir)
 
 #load datasets (landuse,soil,slope,subcatch)
@@ -128,7 +138,7 @@ HRU_temp_att$area_acres<-round(HRU_temp_att$area_hectares * 2.47105)
 HRU_temp_att$percentage<-as.numeric(format(round((HRU_temp_att$area_hectares / area_sz * 100),2), nsmall=2))
 HRU_temp_att$sub_percentage<-HRU_temp_att$percentage
 for(i in 1:length(area_subcatch$ID)){
-HRU_temp_att$sub_percentage[which(HRU_temp_att$ID_SUB == i)]<-HRU_temp_att$area_hectares[which(HRU_temp_att$ID_SUB == i)] / area_subcatch$SUBCATCH_COUNT[which(area_subcatch$ID == i)] * 100
+  HRU_temp_att$sub_percentage[which(HRU_temp_att$ID_SUB == i)]<-HRU_temp_att$area_hectares[which(HRU_temp_att$ID_SUB == i)] / area_subcatch$SUBCATCH_COUNT[which(area_subcatch$ID == i)] * 100
 }
 HRU_temp_att$sub_percentage<-format(round(HRU_temp_att$sub_percentage,2),nsmall=2)
 HRU_temp_att<-HRU_temp_att[,c("ID","UNIQCOMB", "area_hectares", "area_acres","percentage", "sub_percentage", "ID_SUB", "ID_LU", "LU_CLASS", "ID_SOIL","SOIL_CLASS","ID_SLOPE","SLOPE_CLASS")]
@@ -236,15 +246,15 @@ myColors.lu <- myColors[1:length(unique(lu.p$ID))]
 names(myColors.lu) <- unique(lu.p$LU_CLASS)
 ColScale.lu<-scale_fill_manual(name="Landuse Class", values = myColors.lu )
 p  <- ggplot(data=lu.p) + geom_raster(aes(x=lu.p$X, y=lu.p$Y, fill=lu.p$LU_CLASS)) +
-ColScale.lu +
-ggtitle(paste("Landuse Map of", location, period )) +
-theme(plot.title = element_text(lineheight= 5, face="bold")) +
-theme( axis.title.x=element_blank(),axis.title.y=element_blank(),
-panel.grid.major=element_blank(), panel.grid.minor=element_blank(),
-legend.title = element_text(size=8),
-legend.text = element_text(size = 6),
-legend.key.height = unit(0.25, "cm"),
-legend.key.width = unit(0.25, "cm"))
+  ColScale.lu +
+  ggtitle(paste("Landuse Map of", location, period )) +
+  theme(plot.title = element_text(lineheight= 5, face="bold")) +
+  theme( axis.title.x=element_blank(),axis.title.y=element_blank(),
+         panel.grid.major=element_blank(), panel.grid.minor=element_blank(),
+         legend.title = element_text(size=8),
+         legend.text = element_text(size = 6),
+         legend.key.height = unit(0.25, "cm"),
+         legend.key.width = unit(0.25, "cm"))
 
 #Create Soil Map
 soil.p<- rasterToPoints(soil);
@@ -259,15 +269,15 @@ myColors.soil <- myColors[1:length(unique(soil.p$ID))]
 names(myColors.soil) <- unique(soil.p$SOIL_CLASS)
 ColScale.soil<-scale_fill_manual(name="Soil Class", values = myColors.soil )
 p1  <- ggplot(data=soil.p) + geom_raster(aes(x=soil.p$X, y=soil.p$Y, fill=soil.p$SOIL_CLASS)) +
-ColScale.soil +
-ggtitle(paste("Soil Map of", location, period )) +
-theme(plot.title = element_text(lineheight= 5, face="bold")) +
-theme( axis.title.x=element_blank(),axis.title.y=element_blank(),
-panel.grid.major=element_blank(), panel.grid.minor=element_blank(),
-legend.title=element_text(size=8),
-legend.text = element_text(size = 6),
-legend.key.height = unit(0.25, "cm"),
-legend.key.width = unit(0.25, "cm"))
+  ColScale.soil +
+  ggtitle(paste("Soil Map of", location, period )) +
+  theme(plot.title = element_text(lineheight= 5, face="bold")) +
+  theme( axis.title.x=element_blank(),axis.title.y=element_blank(),
+         panel.grid.major=element_blank(), panel.grid.minor=element_blank(),
+         legend.title=element_text(size=8),
+         legend.text = element_text(size = 6),
+         legend.key.height = unit(0.25, "cm"),
+         legend.key.width = unit(0.25, "cm"))
 
 #Create Slope Map
 slope.p<- rasterToPoints(slope);
@@ -282,15 +292,15 @@ myColors.slope <- myColors[1:length(unique(slope.p$ID))]
 names(myColors.slope) <- unique(slope.p$SLOPE_CLASS)
 ColScale.slope<-scale_fill_manual(name="Slope Class", values = myColors.slope )
 p2  <- ggplot(data=slope.p) + geom_raster(aes(x=slope.p$X, y=slope.p$Y, fill=slope.p$SLOPE_CLASS)) +
-ColScale.slope +
-ggtitle(paste("Slope Map of", location, period )) +
-theme(plot.title = element_text(lineheight= 5, face="bold")) +
-theme( axis.title.x=element_blank(),axis.title.y=element_blank(),
-panel.grid.major=element_blank(), panel.grid.minor=element_blank(),
-legend.title=element_text(size=8),
-legend.text = element_text(size = 6),
-legend.key.height = unit(0.25, "cm"),
-legend.key.width = unit(0.25, "cm"))
+  ColScale.slope +
+  ggtitle(paste("Slope Map of", location, period )) +
+  theme(plot.title = element_text(lineheight= 5, face="bold")) +
+  theme( axis.title.x=element_blank(),axis.title.y=element_blank(),
+         panel.grid.major=element_blank(), panel.grid.minor=element_blank(),
+         legend.title=element_text(size=8),
+         legend.text = element_text(size = 6),
+         legend.key.height = unit(0.25, "cm"),
+         legend.key.width = unit(0.25, "cm"))
 
 #Create Subcatch Map
 subcatch.p<- rasterToPoints(subcatch);
@@ -302,15 +312,15 @@ myColors.subcatch <- myColors[1:length(unique(subcatch.p$ID))]
 names(myColors.subcatch) <- unique(subcatch.p$ID)
 ColScale.subcatch<-scale_fill_manual(name="Subcatchment Number", values = myColors.subcatch )
 p3  <- ggplot(data=subcatch.p) + geom_raster(aes(x=subcatch.p$X, y=subcatch.p$Y, fill=subcatch.p$ID)) +
-ColScale.subcatch +
-ggtitle(paste("Subcatchment Map of", location, period )) +
-theme(plot.title = element_text(lineheight= 5, face="bold")) +
-theme( axis.title.x=element_blank(),axis.title.y=element_blank(),
-panel.grid.major=element_blank(), panel.grid.minor=element_blank(),
-legend.title=element_text(size=8),
-legend.text = element_text(size = 6),
-legend.key.height = unit(0.25, "cm"),
-legend.key.width = unit(0.25, "cm"))
+  ColScale.subcatch +
+  ggtitle(paste("Subcatchment Map of", location, period )) +
+  theme(plot.title = element_text(lineheight= 5, face="bold")) +
+  theme( axis.title.x=element_blank(),axis.title.y=element_blank(),
+         panel.grid.major=element_blank(), panel.grid.minor=element_blank(),
+         legend.title=element_text(size=8),
+         legend.text = element_text(size = 6),
+         legend.key.height = unit(0.25, "cm"),
+         legend.key.width = unit(0.25, "cm"))
 
 #create LUSSL report
 rtffile <- RTF("LUSSL.rtf")
@@ -373,16 +383,16 @@ done(rtffile)
 #Dominant HRU Definition
 HRU_dm<-as.data.frame(NULL)
 for (i in 1:length(area_subcatch$ID)){
-HRU_max<-HRU_temp_att[which(HRU_temp_att$ID_SUB == i),]
-HRU_max$ID<-NULL
-HRU_max<-HRU_max[order(HRU_max$area_hectares, decreasing=TRUE),]
-HRU_max<-HRU_max[1,]
-HRU_max$HRU <- i
-HRU_max$area_hectares<-round(HRU_max$area_hectares / as.numeric(HRU_max$sub_percentage) * 100)
-HRU_max$area_acres<-round(HRU_max$area_hectares * 2.47105)
-HRU_max$percentage<-as.numeric(format(round(HRU_max$area_hectares / area_sz * 100, 2), nsmall=2))
-HRU_max$sub_percentage<- as.numeric(format(round(HRU_max$area_hectares / HRU_max$area_hectares *100 , 2),nsmall=2))
-HRU_dm<-rbind(HRU_dm,HRU_max)
+  HRU_max<-HRU_temp_att[which(HRU_temp_att$ID_SUB == i),]
+  HRU_max$ID<-NULL
+  HRU_max<-HRU_max[order(HRU_max$area_hectares, decreasing=TRUE),]
+  HRU_max<-HRU_max[1,]
+  HRU_max$HRU <- i
+  HRU_max$area_hectares<-round(HRU_max$area_hectares / as.numeric(HRU_max$sub_percentage) * 100)
+  HRU_max$area_acres<-round(HRU_max$area_hectares * 2.47105)
+  HRU_max$percentage<-as.numeric(format(round(HRU_max$area_hectares / area_sz * 100, 2), nsmall=2))
+  HRU_max$sub_percentage<- as.numeric(format(round(HRU_max$area_hectares / HRU_max$area_hectares *100 , 2),nsmall=2))
+  HRU_dm<-rbind(HRU_dm,HRU_max)
 }
 HRU<-as.data.frame(HRU_dm[,c("ID_SUB","HRU","UNIQCOMB","area_hectares", "area_acres", "percentage", "sub_percentage")])
 
@@ -434,32 +444,32 @@ text<-paste("-------------------------------------------------------------------
 addParagraph(rtffile, text)
 addNewLine(rtffile,n=1)
 for(i in 1:length(area_subcatch$ID)){
-text<-paste("SUBBASIN #       ", i, "       area[ha]:",sum(lu_report_sub$area_hectares[which((lu_report_sub$ID_SUB == i))]),"      area[acres]:", sum(lu_report_sub$area_acres[which((lu_report_sub$ID_SUB == i))]), "       area[percentage]:",subcatch_report$Percentage[which((subcatch_report$ID_SUB == i))],  sep=" ")
-addParagraph(rtffile, text)
-addNewLine(rtffile,n=1)
-y<-tlu[which((tlu$ID_SUB == i)),]
-y$ID_SUB<-y$ID_LU<-NULL
-x<-tsoil[which((tsoil$ID_SUB == i)),]
-x$ID_SUB<-x$ID_SOIL<-NULL
-colnames(x)<-gsub("\\."," ",colnames(x))
-z<-tslope[which((tslope$ID_SUB == i)),]
-z$ID_SUB<-z$ID_SLOPE<-NULL
-colnames(z)<-gsub("\\."," ",colnames(z))
-z<-z[order(z$SLOPE_CLASS, decreasing=FALSE), ]
-w<-HRU[which(HRU$ID_SUB == i),]
-w$ID_SUB<-NULL
-addNewLine(rtffile, n=1)
-addTable(rtffile, y)
-addNewLine(rtffile, n=1)
-addTable(rtffile, x)
-addNewLine(rtffile, n=1)
-addTable(rtffile, z)
-addNewLine(rtffile, n=1)
-addTable(rtffile, w)
-addNewLine(rtffile, n=1)
-text<-paste("--------------------------------------------------------------------------------------------------------------------------------------------")
-addParagraph(rtffile, text)
-addNewLine(rtffile,n=1)
+  text<-paste("SUBBASIN #       ", i, "       area[ha]:",sum(lu_report_sub$area_hectares[which((lu_report_sub$ID_SUB == i))]),"      area[acres]:", sum(lu_report_sub$area_acres[which((lu_report_sub$ID_SUB == i))]), "       area[percentage]:",subcatch_report$Percentage[which((subcatch_report$ID_SUB == i))],  sep=" ")
+  addParagraph(rtffile, text)
+  addNewLine(rtffile,n=1)
+  y<-tlu[which((tlu$ID_SUB == i)),]
+  y$ID_SUB<-y$ID_LU<-NULL
+  x<-tsoil[which((tsoil$ID_SUB == i)),]
+  x$ID_SUB<-x$ID_SOIL<-NULL
+  colnames(x)<-gsub("\\."," ",colnames(x))
+  z<-tslope[which((tslope$ID_SUB == i)),]
+  z$ID_SUB<-z$ID_SLOPE<-NULL
+  colnames(z)<-gsub("\\."," ",colnames(z))
+  z<-z[order(z$SLOPE_CLASS, decreasing=FALSE), ]
+  w<-HRU[which(HRU$ID_SUB == i),]
+  w$ID_SUB<-NULL
+  addNewLine(rtffile, n=1)
+  addTable(rtffile, y)
+  addNewLine(rtffile, n=1)
+  addTable(rtffile, x)
+  addNewLine(rtffile, n=1)
+  addTable(rtffile, z)
+  addNewLine(rtffile, n=1)
+  addTable(rtffile, w)
+  addNewLine(rtffile, n=1)
+  text<-paste("--------------------------------------------------------------------------------------------------------------------------------------------")
+  addParagraph(rtffile, text)
+  addNewLine(rtffile,n=1)
 }
 done(rtffile)
 
