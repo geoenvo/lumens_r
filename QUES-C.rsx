@@ -458,12 +458,14 @@ eval(parse(text=(paste("zone<-", data2[1,1],sep=""))))
 # } 
 
 #====Load Lookup Tables====
-lookup_c<- read.table(Look_up_table, header=TRUE, sep=",",)
+lookup_c<- read.table(Look_up_table, header=TRUE, sep=",")
 lookup_z <- lut.pu
 lookup_c<-lookup_c[which(lookup_c[1] != raster.nodata),]
 lookup_lc<-lookup_c
+lookup_ref<-p.admin.df
 colnames(lookup_lc)<-c("ID","LC","CARBON")
 colnames(lookup_z)<-c("ID", "Z_NAME")
+colnames(lookup_ref)<-c("Z_NAME", "ZONE")
 
 #====Set Project Properties====
 title=location
@@ -523,9 +525,7 @@ colnames(lookup_c)[1]="ID_LC2"
 colnames(lookup_c)[2]="LC_t2"
 colnames(lookup_c)[3]="CARBON_t2"
 refDB <- as.data.frame(merge(refDB,lookup_c,by="ID_LC2"))
-colnames(lookup_z)[1]="ZONE"
-colnames(lookup_z)[2]="Z_NAME"
-refDB <- as.data.frame(merge(refDB,lookup_z,by="ZONE"))
+refDB <- as.data.frame(merge(refDB,lookup_ref,by="ZONE"))
 refMelt<-melt(data = refDB, id.vars=c('ZONE'), measure.vars=c('COUNT'))
 refArea<-dcast(data = refMelt, formula = ZONE ~ ., fun.aggregate = sum)
 
