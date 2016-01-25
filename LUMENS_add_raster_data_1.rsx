@@ -3,6 +3,7 @@
 ##data=raster
 ##period=number 0
 ##description=string
+##attribute_table=output table
 ##statuscode=output table
 ##statusmessage=output table
 
@@ -32,45 +33,69 @@ raster_category<-function(category, index, name, desc) {
 #CLASSIFY RASTER INTO THREE CATEGORY INPUT 
 if(category==0){
   category<-"land_use_cover"
-  data_name<-paste("Landuse",sep="")
+  data_name<-"Landuse"
   
+  #write index
   landuse.index<-landuse.index+1
   period.index<-period.index+1
   eval(parse(text=(paste("period", period.index, "<-period", sep=""))))
   period_i<-paste("period", period.index, sep="")
   eval(parse(text=(paste(period_i, "<-period", sep="" ))))
-  
   index1<-landuse.index
   
-  raster_category(category=category, index=index1, name=data_name, desc=description)
+  tryCatch({
+    raster_category(category=category, index=index1, name=data_name, desc=description) 
+  }, error=function(e){ 
+    statuscode<-0
+    statusmessage<-e    
+  })
   
-  eval(parse(text=(paste("freq",data_name, "_", landuse.index, "<-as.data.frame(na.omit(freq(", data_name,"_", landuse.index, ")))",  sep=""))))
-  eval(parse(text=(paste("resave(", data_name,"_", landuse.index, ",landuse.index,freq", data_name,"_",landuse.index,",",period_i, ",period.index,file=lumens_database)", sep=""))))
+  eval(parse(text=(paste("attribute_table<-as.data.frame(na.omit(freq(", data_name,"_", landuse.index, ")))",  sep=""))))
+  
+  eval(parse(text=(paste("resave(", data_name,"_", landuse.index, ",landuse.index,", period_i, ",period.index,file=lumens_database)", sep=""))))
+  
+  statuscode<-1
+  statusmessage<-"editing attribute table stage"
 } else if(category==1){
   category<-"planning_unit"
   data_name<-"pu_pu"
   
-  pu_rec.index<-pu_rec.index+1
-  index<-pu_rec.index
+  #write index
+  pu.index<-pu.index+1
+  index1<-pu.index
   
-  raster_category(category=category, index=index1, name=data_name, desc=description)
+  tryCatch({
+    raster_category(category=category, index=index1, name=data_name, desc=description) 
+  }, error=function(e){ 
+    statuscode<-0
+    statusmessage<-e    
+  })
   
-  eval(parse(text=(paste("lut.pu", pu_rec.index, "<-as.data.frame(na.omit(freq(", data_name,"_", pu_rec.index, ")))",  sep=""))))
-  eval(parse(text=(paste("resave(", data_name,pu_rec.index, ",lut.pu",pu_rec.index,",pu_rec.index, file=lumens_database)", sep=""))))
+  eval(parse(text=(paste("attribute_table<-as.data.frame(na.omit(freq(", data_name,"_", pu.index, ")))",  sep=""))))
+  
+  eval(parse(text=(paste("resave(", data_name, pu.index, ",pu.index, file=lumens_database)", sep=""))))
+  
+  statuscode<-1
+  statusmessage<-"editing attribute table stage"
 } else {
   category<-"factor_data"
   data_name<-"factor"
   
+  #write index
   SCIENDO1.index<-SCIENDO1.index+1
-  index<-SCIENDO1.index
+  index1<-SCIENDO1.index
   
-  raster_category(category=category, index=index1, name=data_name, desc=description)
+  tryCatch({
+    raster_category(category=category, index=index1, name=data_name, desc=description) 
+  }, error=function(e){ 
+    statuscode<-0
+    statusmessage<-e    
+  })
   
   eval(parse(text=(paste("resave(", data_name, "_", SCIENDO1.index, ",SCIENDO1.index, file=lumens_database)", sep=""))))
+  
+  statuscode<-1
+  statusmessage<-"factor data has been added!"
 }
-
-
-statuscode<-1
-statusmessage<-"editing attribute table stage"
 
 #====next====
