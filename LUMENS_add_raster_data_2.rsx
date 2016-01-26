@@ -1,6 +1,8 @@
 ##Alpha - DATABASE=group
 ##category=selection Land Use/Cover; Planning Unit
 ##attribute_table=file
+##statuscode=output table
+##statusmessage=output table
 
 #READ LUMENS LOG FILE
 user_temp_folder<-Sys.getenv("TEMP")
@@ -20,9 +22,13 @@ if(category==0){
   data_name<-"Landuse"
   eval(parse(text=(paste("freq", data_name, "_", landuse.index, "<-attribute_table",  sep=""))))
   eval(parse(text=(paste("resave(freq", data_name,"_", landuse.index, ",file=lumens_database)", sep=""))))
+  statuscode<-1
+  statusmessage<-"land use/cover data has been added"
 } else {
   data_name<-"lut.pu"
   eval(parse(text=(paste("lut.pu", pu.index, "<-attribute_table",  sep=""))))
   eval(parse(text=(paste("resave(lut.pu", pu.index, ", file=lumens_database)", sep=""))))
+  statuscode<-1
+  statusmessage<-"planning unit has been added"
 }
 
