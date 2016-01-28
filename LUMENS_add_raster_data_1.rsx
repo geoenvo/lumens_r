@@ -4,8 +4,8 @@
 ##period=number 0
 ##description=string
 ##attribute_table=output table
-##statuscode=output table
-##statusmessage=output table
+##statuscode=output number
+##statusmessage=output string
 
 library(spatial.tools)
 
@@ -97,5 +97,8 @@ if(category==0){
   statuscode<-1
   statusmessage<-"factor data has been added!"
 }
+
+>statuscode
+>statusmessage
 
 #====next====

@@ -1,6 +1,8 @@
 ##Alpha - DATABASE=group
 ##proj.file=file
 ##p.admin.df=file
+##statuscode=output number
+##statusmessage=output string
 
 library(rtf)
 library(rasterVis)
@@ -217,4 +219,7 @@ shell(command)
 #CLEAN ENVIRONMENT
 rm(list=ls(all.names=TRUE))
 
-gc()
+statuscode<-1
+statusmessage<-"LUMENS database has been created!"
+>statuscode
+>statusmessage
