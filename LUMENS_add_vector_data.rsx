@@ -5,8 +5,8 @@
 ##attribute_field_name=field data
 ##period=number 0
 ##description=string
-##statuscode=output table
-##statusmessage=output table
+##statuscode=output number
+##statusmessage=output string
 
 library(foreign)
 library(stringr)
@@ -104,4 +104,6 @@ if(category==0){
   statuscode<-1
   statusmessage<-"planning unit has been added"
 }
-
+ 
+>statuscode
+>statusmessage
