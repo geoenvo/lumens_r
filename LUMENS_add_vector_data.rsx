@@ -5,8 +5,7 @@
 ##attribute_field_name=field data
 ##period=number 0
 ##description=string
-##statuscode=output number
-##statusmessage=output string
+##statusoutput=output file
 
 library(foreign)
 library(stringr)
@@ -105,5 +104,4 @@ if(category==0){
   statusmessage<-"planning unit has been added"
 }
  
->statuscode
->statusmessage
+statusoutput<-data.frame(statuscode=statuscode, statusmessage=statusmessage)

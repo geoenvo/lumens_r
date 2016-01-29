@@ -1,8 +1,7 @@
 ##Alpha - DATABASE=group
 ##proj.file=file
 ##p.admin.df=file
-##statuscode=output number
-##statusmessage=output string
+##statusoutput=output file
 
 library(rtf)
 library(rasterVis)
@@ -221,5 +220,4 @@ rm(list=ls(all.names=TRUE))
 
 statuscode<-1
 statusmessage<-"LUMENS database has been created!"
->statuscode
->statusmessage
+statusoutput<-data.frame(statuscode=statuscode, statusmessage=statusmessage)

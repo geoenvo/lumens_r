@@ -4,8 +4,7 @@
 ##period=number 0
 ##description=string
 ##attribute_table=output table
-##statuscode=output number
-##statusmessage=output string
+##statusoutput=output file
 
 library(spatial.tools)
 
@@ -98,7 +97,6 @@ if(category==0){
   statusmessage<-"factor data has been added!"
 }
 
->statuscode
->statusmessage
+statusoutput<-data.frame(statuscode=statuscode, statusmessage=statusmessage)
 
 #====next====

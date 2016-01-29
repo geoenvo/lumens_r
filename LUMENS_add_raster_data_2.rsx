@@ -1,8 +1,7 @@
 ##Alpha - DATABASE=group
 ##category=selection Land Use/Cover; Planning Unit
 ##attribute_table=file
-##statuscode=output number
-##statusmessage=output string
+##statusoutput=output file
 
 #READ LUMENS LOG FILE
 user_temp_folder<-Sys.getenv("TEMP")
@@ -32,5 +31,4 @@ if(category==0){
   statusmessage<-"planning unit has been added"
 }
 
->statuscode
->statusmessage
+statusoutput<-data.frame(statuscode=statuscode, statusmessage=statusmessage)
