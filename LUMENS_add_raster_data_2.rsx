@@ -1,7 +1,7 @@
 ##Alpha - DATABASE=group
 ##category=selection Land Use/Cover; Planning Unit
 ##attribute_table=file
-##statusoutput=output file
+##statusoutput=output table
 
 #READ LUMENS LOG FILE
 user_temp_folder<-Sys.getenv("TEMP")

@@ -1,7 +1,7 @@
 ##Alpha - DATABASE=group
 ##proj.file=file
 ##p.admin.df=file
-##statusoutput=output file
+##statusoutput=output table
 
 library(rtf)
 library(rasterVis)

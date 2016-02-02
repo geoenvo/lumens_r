@@ -5,7 +5,7 @@
 ##attribute_field_name=field data
 ##period=number 0
 ##description=string
-##statusoutput=output file
+##statusoutput=output table
 
 library(foreign)
 library(stringr)

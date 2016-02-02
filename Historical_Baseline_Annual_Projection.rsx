@@ -6,6 +6,7 @@ library(foreign)
 library(rtf)
 library(sp)
 library(raster)
+library(reshape)
 library(reshape2)
 library(tcltk)
 #include_peat=1
@@ -79,49 +80,50 @@ pu_list<-rbind(pu_list, c("ref", names(ref), "p.admin.df"))
 pu_selected<-pu_list[which(pu_list$Name==pu_name),]
 eval(parse(text=(paste("lut.pu<-", pu_selected$LUT ,sep=""))))
 
-dirAnnual<-paste(dirname(proj.file), "/SCIENDO/Annual_", pu_name, sep="")
+SCIENDO1.index=SCIENDO1.index+1
+dirAnnual<-paste(dirname(proj.file), "/SCIENDO/Annual_", pu_name, SCIENDO1.index, sep="")
 dir.create(dirAnnual, mode="0777")
 setwd(dirAnnual)
 workingDirectory<-dirAnnual
 
 #====CREATE RUNNING RECORD====
-check_record <- paste(t2-1, t2, pu_name, sep="")
-if(exists("run_record")){
-  rec_selected <- run_record[which(run_record$rec==check_record & run_record$modul=="Annual"),]
-  n_rec <- nrow(rec_selected)
-  if(n_rec==0){
-    new_rec <- data.frame(check_record, t2-1, t2, pu_name, "Annual")
-    colnames(new_rec)[1] <- "rec"
-    colnames(new_rec)[2] <- "T1"
-    colnames(new_rec)[3] <- "T2"
-    colnames(new_rec)[4] <- "pu_selected"    
-    colnames(new_rec)[5] <- "modul"    
-    run_record <- rbind(run_record, new_rec)
-  } else {
-    #print car
-    
-    eval(parse(text=(paste("abacus_car<-annual_", check_record, sep=''))))
-    write(abacus_car, paste(dirAnnual, "/Annualprojection.car",sep=""), append=TRUE, sep="\t")
-    
-    if (file.exists("C:/Program Files (x86)/LUMENS/Abacus2")){
-      abacusExecutable = "C:/Progra~2/LUMENS/Abacus2/abacus2 "
-    } else{
-      abacusExecutable = "C:/Progra~1/LUMENS/Abacus2/abacus2 "
-    }
-    Abacus_Project_File <- paste(dirAnnual, "/Annualprojection.car",sep="")
-    systemCommand <- paste(abacusExecutable, Abacus_Project_File, "-ref LUMENS -wd", dirAnnual)
-    system(systemCommand)
-    
-    quit()  
-  }
-} else {
-  run_record <- data.frame(check_record, t2-1, t2, pu_name, "Annual")
-  colnames(run_record)[1] <- "rec"
-  colnames(run_record)[2] <- "T1"
-  colnames(run_record)[3] <- "T2"
-  colnames(run_record)[4] <- "pu_selected"
-  colnames(run_record)[5] <- "modul"
-}
+# check_record <- paste(t2-1, t2, pu_name, sep="")
+# if(exists("run_record")){
+#   rec_selected <- run_record[which(run_record$rec==check_record & run_record$modul=="Annual"),]
+#   n_rec <- nrow(rec_selected)
+#   if(n_rec==0){
+#     new_rec <- data.frame(check_record, t2-1, t2, pu_name, "Annual")
+#     colnames(new_rec)[1] <- "rec"
+#     colnames(new_rec)[2] <- "T1"
+#     colnames(new_rec)[3] <- "T2"
+#     colnames(new_rec)[4] <- "pu_selected"    
+#     colnames(new_rec)[5] <- "modul"    
+#     run_record <- rbind(run_record, new_rec)
+#   } else {
+#     #print car
+#     
+#     eval(parse(text=(paste("abacus_car<-annual_", check_record, sep=''))))
+#     write(abacus_car, paste(dirAnnual, "/Annualprojection.car",sep=""), append=TRUE, sep="\t")
+#     
+#     if (file.exists("C:/Program Files (x86)/LUMENS/Abacus2")){
+#       abacusExecutable = "C:/Progra~2/LUMENS/Abacus2/abacus2 "
+#     } else{
+#       abacusExecutable = "C:/Progra~1/LUMENS/Abacus2/abacus2 "
+#     }
+#     Abacus_Project_File <- paste(dirAnnual, "/Annualprojection.car",sep="")
+#     systemCommand <- paste(abacusExecutable, Abacus_Project_File, "-ref LUMENS -wd", dirAnnual)
+#     system(systemCommand)
+#     
+#     quit()  
+#   }
+# } else {
+#   run_record <- data.frame(check_record, t2-1, t2, pu_name, "Annual")
+#   colnames(run_record)[1] <- "rec"
+#   colnames(run_record)[2] <- "T1"
+#   colnames(run_record)[3] <- "T2"
+#   colnames(run_record)[4] <- "pu_selected"
+#   colnames(run_record)[5] <- "modul"
+# }
 
 
 eval(parse(text=(paste("central_data<-", data, sep=""))))
@@ -261,14 +263,14 @@ tryCatch({
 },error=function(e){cat("dbf file can't be written", "\n")})
 
 annual_emission<-NULL
-for (y in 0:iteration) {
+for (y in 1:iteration) {
   eval(parse(text=(paste("data4$em_t", y,"<-data4$COUNT.it", y, "*(data4$CARBON_t1-data4$CARBON_t2)*data4$ck_em*3.67", sep=""))))
   eval(parse(text=(paste("emtot<-sum(data4$em_t", y,")", sep=""))))
   annual_emission<-c(annual_emission, emtot)
 }
 
 annual_sequestration<-NULL
-for (x in 0:iteration) {
+for (x in 1:iteration) {
   eval(parse(text=(paste("data4$sq_t", x,"<-data4$COUNT.it", x, "*(data4$CARBON_t2-data4$CARBON_t1)*data4$ck_sq*3.67", sep=""))))
   eval(parse(text=(paste("sqtot<-sum(data4$sq_t", x,")", sep=""))))
   annual_sequestration<-c(annual_sequestration, sqtot)
@@ -282,7 +284,9 @@ em$cum_netem<-cumsum(em$netem)
 
 year<-as.character(QUESC_list [QUESC_list_n,1])
 t0<-t2
-yearsim<-c(t0:(t0+iteration))
+t1<-t0+1
+year_len<-iteration-1
+yearsim<-c(paste(t0:(t0+year_len), t1:(t1+year_len), sep="-"))
 
 em<-as.data.frame(cbind(yearsim,em))
 em$yearsim<-factor(em$yearsim)
@@ -313,14 +317,16 @@ if(is.factor(lut.pu[,1])){
 colnames(pu)[1] <- "ZONE"
 colnames(pu)[2] <- "Z_NAME"
 
-d1<-melt(data=data2, id.vars=c('ID_LC1','LC_t1'))
+d1<-melt(data=data4, id.vars=c('ID_LC1','LC_t1'))
 d1$variable<-d1$value<-NULL
 d1<-unique(d1)
 d1<-na.omit(d1)
-d2<-melt(data=data2, id.vars=c('ID_LC2','LC_t2'))
+d1<-d1[which(d1$ID_LC1!=0),]
+d2<-melt(data=data4, id.vars=c('ID_LC2','LC_t2'))
 d2$variable<-d2$value<-NULL
 d2<-unique(d2)
 d2<-na.omit(d2)
+d2<-d2[which(d2$ID_LC2!=0),]
 lu1.lost<-unique(data2$ID_LC2)[is.na(match(unique(data2$ID_LC2),unique(data2$ID_LC1)))]
 lu2.lost<-unique(data2$ID_LC1)[is.na(match(unique(data2$ID_LC1),unique(data2$ID_LC2)))]
 lu.lost<-c(as.integer(as.matrix(lu1.lost)),as.integer(as.matrix(lu2.lost)))
@@ -361,7 +367,7 @@ write(text0, paste(dirAnnual, "/",Scenario_name,".car",sep=""),append=TRUE, sep=
 write.table(Gnrl.info, paste(dirAnnual,"/",Scenario_name,".car",sep=""),append=TRUE,quote=FALSE,col.names=FALSE,row.names=FALSE,sep="\t")
 
 Project.info.1<-c("title","description", "baseyear0", "baseyear1", "n_iteration")
-Project.info.2<-c("SCIENDO", "Project description", t2-1, t2, iteration)
+Project.info.2<-c("SCIENDO", "Project description", t0, t1, iteration)
 Project.info<-paste(Project.info.1,Project.info.2,sep="=")
 text<-"\n#PROJECT"
 write(text, paste(dirAnnual, "/",Scenario_name,".car",sep=""),append=TRUE, sep="\t")
@@ -396,7 +402,8 @@ write.table(name.pu, paste(dirAnnual, "/",Scenario_name,".car",sep=""),append=TR
 #Landcover change
 text<-"\n#LANDCOVER_CHANGE"
 write(text, paste(dirAnnual, "/",Scenario_name,".car",sep=""),append=TRUE, sep="\t")
-eval(parse(text=(paste("name.lcc<-",data))))
+#eval(parse(text=(paste("name.lcc<-",data))))
+name.lcc<-data4
 name.lcc$iteration_id<-name.lcc$'//scenario_id'<-0
 name.lcc<-merge(name.lcc, name.pu.temp, by="Z_NAME")
 colnames(name.lc.temp)[2]='LC_t1'
@@ -406,7 +413,7 @@ name.lcc$'//lc_id'<-NULL
 colnames(name.lc.temp)[2]='LC_t2'
 name.lcc<-merge(name.lcc, name.lc.temp, by="LC_t2")
 name.lcc$lc2_id<-name.lcc$'//lc_id'
-name.lcc<-name.lcc[c('//scenario_id','iteration_id','//zone_id','lc1_id','lc2_id','COUNT')]
+name.lcc<-name.lcc[c('//scenario_id','iteration_id','//zone_id','lc1_id','lc2_id','COUNT.it1')]
 colnames(name.lcc)[3]='zone_id'
 colnames(name.lcc)[4]='lc1_id'
 colnames(name.lcc)[5]='lc2_id'
@@ -439,8 +446,8 @@ Abacus_Project_File = paste(dirAnnual, "/",Scenario_name,".car",sep="") #work wi
 #Original_Project_File = paste(workingDirectory, "/","Original_data.car",sep="")
 #file.copy(Abacus_Project_File,Original_Project_File)
 
-eval(parse(text=(paste("annual_", check_record, "<-readLines(Abacus_Project_File)", sep=""))))  
-eval(parse(text=(paste("resave(run_record, annual_", check_record, ", file=proj.file)", sep=""))))
+#eval(parse(text=(paste("annual_", check_record, "<-readLines(Abacus_Project_File)", sep=""))))  
+#eval(parse(text=(paste("resave(run_record, annual_", check_record, ", file=proj.file)", sep=""))))
 
 if (file.exists("C:/Program Files (x86)/LUMENS/Abacus2")){
   abacusExecutable = "C:/Progra~2/LUMENS/Abacus2/abacus2 "
@@ -450,35 +457,50 @@ if (file.exists("C:/Program Files (x86)/LUMENS/Abacus2")){
 systemCommand <- paste(abacusExecutable, Abacus_Project_File, "-ref LUMENS -wd", dirAnnual)
 system(systemCommand)
 
+#====summary area of projection from all iteration====
+#====values were taken from text file in: /specified working directory/output/output.txt 
+output_file<-readLines(paste(dirAnnual,"/output/output.txt",sep=""))
+baris_summary<-as.numeric(pmatch('#MODEL_SUMMARY', output_file))
+baris_summary<-baris_summary+11
+
+all_summary<-as.data.frame(output_file[baris_summary:length(output_file)])
+write.table(all_summary, paste(dirAnnual, "/output/all_summary.txt",sep=""), append=TRUE, quote=FALSE, col.names=FALSE, row.names=FALSE, sep=" ")
+all_summary<-read.table(paste(dirAnnual, "/output/all_summary.txt",sep=""), sep="\t", header = T)
+file.remove(paste(dirAnnual,  "/output/all_summary.txt",sep=""))
+
+all_summary_melt<-melt(all_summary, id.vars=c('iteration','zone','landuse1','landuse2'), measure.vars=c('area'))
+all_summary_cast<-cast(all_summary_melt, zone+landuse1+landuse2~iteration)
+eval(parse(text=(paste("SCIENDO_AnnualDB_", pu_name, SCIENDO1.index, "<-all_summary_cast", sep=""))))
+
+eval(parse(text=(paste("resave(SCIENDO1.index, SCIENDO_AnnualDB_", pu_name, SCIENDO1.index, ", file=proj.file)", sep=""))))
+
 #====WRITE REPORT====
-# title<-"\\b\\fs32 LUMENS-SCIENDO - HISTORICAL BASELINE ANNUAL PROJECTION \\b0\\fs20"
-# date<-paste("Date : ", as.character(Sys.Date()), sep="")
-# time_start<-paste("Processing started : ", time_start, sep="")
-# time_end<-paste("Processing ended : ", eval(parse(text=(paste("Sys.time ()")))), sep="")
-# line<-paste("------------------------------------------------------------------------------------------------------------------------------------------------")
-# I_O_period_1_rep<-paste("\\b","\\fs20", period1)
-# I_O_period_2_rep<-paste("\\b","\\fs20", period2)
-# rtffile <- RTF("LUMENS_SCIENDO-Annual_Projection_report.lpr", font.size=9)
-# addParagraph(rtffile, "\\b\\fs32 Hasil Analisis\\b0\\fs20")
-# addNewLine(rtffile)
-# addNewLine(rtffile)
-# addParagraph(rtffile, title)
-# addNewLine(rtffile)
-# addNewLine(rtffile)
-# addParagraph(rtffile, line)
-# addParagraph(rtffile, date)
-# addParagraph(rtffile, time_start)
-# addParagraph(rtffile, time_end)
-# addParagraph(rtffile, line)
-# addNewLine(rtffile)
-# addTable(rtffile,em, font.size=8) 
-# addNewLine(rtffile)
-# addPlot(rtffile,plot.fun=print, width=6.7,height=3,res=300, plot1)
-# addNewLine(rtffile)
-# addPlot(rtffile,plot.fun=print, width=6.7,height=3,res=300, plot2)
-# done(rtffile)
-# 
-# command<-paste("start ", "winword ", dirAnnual, "/LUMENS_SCIENDO-Annual_Projection_report.lpr", sep="" )
-# shell(command)
+title<-"\\b\\fs32 LUMENS-SCIENDO - HISTORICAL BASELINE ANNUAL PROJECTION \\b0\\fs20"
+date<-paste("Date : ", as.character(Sys.Date()), sep="")
+time_start<-paste("Processing started : ", time_start, sep="")
+time_end<-paste("Processing ended : ", eval(parse(text=(paste("Sys.time ()")))), sep="")
+line<-paste("------------------------------------------------------------------------------------------------------------------------------------------------")
+I_O_period_1_rep<-paste("\\b","\\fs20", period1)
+I_O_period_2_rep<-paste("\\b","\\fs20", period2)
+rtffile <- RTF("LUMENS_SCIENDO-Annual_Projection_report.lpr", font.size=9)
+addParagraph(rtffile, "\\b\\fs32 Hasil Analisis\\b0\\fs20")
+addNewLine(rtffile)
+addNewLine(rtffile)
+addParagraph(rtffile, title)
+addNewLine(rtffile)
+addNewLine(rtffile)
+addParagraph(rtffile, line)
+addParagraph(rtffile, date)
+addParagraph(rtffile, time_start)
+addParagraph(rtffile, time_end)
+addParagraph(rtffile, line)
+addNewLine(rtffile)
+addTable(rtffile,em, font.size=8) 
+addNewLine(rtffile)
+addPlot(rtffile,plot.fun=print, width=6.7,height=3,res=300, plot1)
+addNewLine(rtffile)
+addPlot(rtffile,plot.fun=print, width=6.7,height=3,res=300, plot2)
+done(rtffile)
 
-
+command<-paste("start ", "winword ", dirAnnual, "/LUMENS_SCIENDO-Annual_Projection_report.lpr", sep="" )
+shell(command)

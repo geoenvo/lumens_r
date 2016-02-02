@@ -4,6 +4,7 @@
 #====LOAD LIBRARY====
 library(plyr)
 library(reshape2)
+library(reshape)
 library(ggplot2)
 library(foreign)
 library(rtf)
@@ -533,7 +534,7 @@ write.table(name.pu, paste(result_dir, "/",Scenario_name,".car",sep=""),append=T
 #Landcover change
 text<-"\n#LANDCOVER_CHANGE"
 write(text, paste(result_dir, "/",Scenario_name,".car",sep=""),append=TRUE, sep="\t")
-name.lcc<-data
+name.lcc<-data4
 name.lcc$iteration_id<-name.lcc$'//scenario_id'<-0
 name.lcc<-merge(name.lcc, name.pu.temp, by="Z_NAME")
 colnames(name.lc.temp)[2]='LC_t1'
@@ -570,13 +571,36 @@ write.table(name.carbon, paste(result_dir, "/",Scenario_name,".car",sep=""),appe
 
 Abacus_Project_File = paste(result_dir, "/",Scenario_name,".car",sep="")
 
-eval(parse(text=(paste("car_", check_record, "<-readLines(Abacus_Project_File)", sep=""))))  
+#eval(parse(text=(paste("car_", check_record, "<-readLines(Abacus_Project_File)", sep=""))))  
 
 #====DATABASE EXPORT
 #eval(parse(text=(paste("Historical_data_", T1, "_", T2, "_", SCIENDO1.index, "<-LUTMDatabase", sep=""))))
 #historical<-paste("Historical_data_", T1, "_", T2, "_", SCIENDO1.index, sep="")
 #eval(parse(text=(paste("resave(SCIENDO1.index, ", historical, ", file='",proj.file,"')", sep=""))))
-eval(parse(text=(paste("resave(run_record, car_", check_record, ", SCIENDO1.index, file=proj.file)", sep=""))))
+#eval(parse(text=(paste("resave(run_record, car_", check_record, ", SCIENDO1.index, file=proj.file)", sep=""))))
+eval(parse(text=(paste("resave(SCIENDO1.index, file='",proj.file,"')", sep=""))))
+
+car_file<-readLines(Abacus_Project_File)
+baris_lc<-as.numeric(pmatch('#LANDCOVER', car_file))
+baris_zone<-as.numeric(pmatch('#ZONE', car_file))
+baris_lcc<-as.numeric(pmatch('#LANDCOVER_CHANGE', car_file))
+
+baris_lc<-baris_lc+1
+baris_lc_end<-baris_zone-2
+baris_zone<-baris_zone+1
+baris_zone_end<-baris_lcc-2
+
+landcover<-as.data.frame(car_file[baris_lc:baris_lc_end])
+write.table(landcover, paste(result_dir, "/landcover.txt",sep=""), append=TRUE, quote=FALSE, col.names=FALSE, row.names=FALSE, sep=" ")
+landcover<-read.table(paste(result_dir, "/landcover.txt",sep=""), sep="\t", header = T)
+file.remove(paste(result_dir,  "/landcover.txt",sep=""))
+landcover$description<-NULL
+
+zone<-as.data.frame(car_file[baris_zone:baris_zone_end])
+write.table(zone, paste(result_dir, "/zone.txt",sep=""), append=TRUE, quote=FALSE, col.names=FALSE, row.names=FALSE, sep=" ")
+zone<-read.table(paste(result_dir, "/zone.txt",sep=""), sep="\t", header = T)
+file.remove(paste(result_dir,  "/zone.txt",sep=""))
+zone$description<-NULL
 
 if (file.exists("C:/Program Files (x86)/LUMENS/Abacus2")){
   abacusExecutable = "C:/Progra~2/LUMENS/Abacus2/abacus2 "
@@ -585,3 +609,33 @@ if (file.exists("C:/Program Files (x86)/LUMENS/Abacus2")){
 }
 systemCommand <- paste(abacusExecutable, Abacus_Project_File, "-ref LUMENS -wd", result_dir)
 system(systemCommand)
+
+output_file<-readLines(paste(result_dir,"/output/output.txt",sep=""))
+baris_summary<-as.numeric(pmatch('#MODEL_SUMMARY', output_file))
+baris_summary<-baris_summary+11
+
+all_summary<-as.data.frame(output_file[baris_summary:length(output_file)])
+write.table(all_summary, paste(result_dir, "/output/all_summary.txt",sep=""), append=TRUE, quote=FALSE, col.names=FALSE, row.names=FALSE, sep=" ")
+all_summary<-read.table(paste(result_dir, "/output/all_summary.txt",sep=""), sep="\t", header = T)
+file.remove(paste(result_dir,  "/output/all_summary.txt",sep=""))
+
+all_summary_melt<-melt(all_summary, id.vars=c('iteration','zone','landuse1','landuse2'), measure.vars=c('area'))
+all_summary_cast<-cast(all_summary_melt, zone+landuse1+landuse2~iteration)
+eval(parse(text=(paste("SCIENDO_PeriodDB", SCIENDO1.index, "<-all_summary_cast", sep=""))))
+
+colnames(landcover)[1]<-"landuse1"
+colnames(landcover)[2]<-"LC_t1"
+colnames(lut.c)[2]<-"LC_t1"
+colnames(lut.c)[3]<-"carbon1"
+lut.c<-merge(lut.c, landcover, by="LC_t1")
+lut.c<-subset(lut.c, select=c('landuse1', 'LC_t1', 'carbon1'))
+eval(parse(text=(paste('SCIENDO_PeriodDB', SCIENDO1.index, '<-merge(SCIENDO_PeriodDB', SCIENDO1.index, ', lut.c, by="landuse1")', sep=""))))
+colnames(lut.c)[1]<-"landuse2"
+colnames(lut.c)[2]<-"LC_t2"
+colnames(lut.c)[3]<-"carbon2"
+eval(parse(text=(paste('SCIENDO_PeriodDB', SCIENDO1.index, '<-merge(SCIENDO_PeriodDB', SCIENDO1.index, ', lut.c, by="landuse2")', sep=""))))
+colnames(zone)[1]<-"zone"
+colnames(zone)[2]<-"Z_NAME"
+eval(parse(text=(paste('SCIENDO_PeriodDB', SCIENDO1.index, '<-merge(SCIENDO_PeriodDB', SCIENDO1.index, ', zone, by="zone")', sep=""))))
+
+eval(parse(text=(paste("write.dbf(SCIENDO_PeriodDB", SCIENDO1.index, ",'SCIENDO_PeriodDB.dbf')", sep=""))))

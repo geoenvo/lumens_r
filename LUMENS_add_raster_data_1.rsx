@@ -4,7 +4,7 @@
 ##period=number 0
 ##description=string
 ##attribute_table=output table
-##statusoutput=output file
+##statusoutput=output table
 
 library(spatial.tools)
 
