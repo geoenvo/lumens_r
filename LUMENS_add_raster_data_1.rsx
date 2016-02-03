@@ -5,6 +5,7 @@
 ##description=string
 ##attribute_table=output table
 ##statusoutput=output table
+##passfilenames
 
 library(spatial.tools)
 
