@@ -1,4 +1,4 @@
-##[LUMENS]=group
+##Alpha - DATABASE=group
 ##working_directory=folder
 ##project=string (enter name of the project)
 ##location=string (enter location)
@@ -8,6 +8,8 @@
 ##data=raster
 ##admin_attribute=vector
 ##field_attribute=field admin_attribute
+##dissolve_table=file
+##statusoutput=output table
 
 time_start<-paste(eval(parse(text=(paste("Sys.time ()")))), sep="")
 
@@ -31,6 +33,7 @@ QUESB_path <- paste(QUES_path, "/QUES-B", sep="")
 QUESH_path <- paste(QUES_path, "/QUES-H", sep="")
 TA_path <- paste(LUMENS_path, "/TA", sep="")
 SCIENDO_path  <- paste(LUMENS_path, "/SCIENDO", sep="")
+DATA_path  <- paste(LUMENS_path, "/DATA", sep="")
 
 dir.create(LUMENS_path, mode="0777")
 dir.create(PUR_path, mode="0777")
@@ -41,6 +44,7 @@ dir.create(QUESB_path, mode="0777")
 dir.create(QUESH_path, mode="0777")
 dir.create(TA_path, mode="0777")
 dir.create(SCIENDO_path, mode="0777")
+dir.create(DATA_path, mode="0777")
 
 #create LUMENS.log
 user_temp_folder<-Sys.getenv("TEMP")
@@ -59,6 +63,7 @@ db_name<-paste(project, ".lpj", sep="")
 landuse.index=0
 pu.index=0
 pu_rec.index=0
+factor.index=0
 lut_carbon.index=0
 lut_landuse.index=0
 lut_zone.index=0
@@ -75,6 +80,14 @@ TA2.index=0
 ref.index=1
 admin.index=1
 
+if (file.exists("C:/Program Files (x86)/LUMENS")){
+  win.arch = "32bit"
+  processing.path = "C:/Progra~2/LUMENS/apps/qgis/python/plugins/processing/r/scripts/"
+} else{
+  win.arch = "64bit"
+  processing.path = "C:/Progra~1/LUMENS/apps/qgis/python/plugins/processing/r/scripts/"
+}
+
 #CREATE RESAVE FUNCTION
 resave <- function(..., list = character(), file) {
   previous  <- load(file)
@@ -85,26 +98,6 @@ resave <- function(..., list = character(), file) {
 
 #CREATE PROJECT DESCRIPTION TABLE
 proj_descr <- as.data.frame(rbind(project, description, working_directory, location, province, country))
-
-# #CREATE COVERAGE REFERENCE FOR PROJECT
-# ref<-raster(data)
-# ref<-ref*1
-# Ref.name<-names(ref)
-# Ref.type<-class(ref)
-# Ref.source<-data
-# Ref.coord<-as.character(crs(ref))
-# Ref.res<-res(ref)
-# Ref.xmin<-xmin(ref)
-# Ref.xmax<-xmax(ref)
-# Ref.ymin<-ymin(ref)
-# Ref.ymax<-ymax(ref)
-# cov.desc1<-c("Reference name","Reference class", "Reference source", "Reference CRS", "Reference Resolution", "Xmin", "Xmax", "Ymin", "Ymax")
-# cov.desc2<-as.data.frame(rbind(Ref.name, Ref.type, Ref.source, Ref.coord, Ref.res, Ref.xmin, Ref.xmax, Ref.ymin, Ref.ymax))
-# cov.desc2<-cov.desc2[1]
-# cov.desc<-cbind(cov.desc1,cov.desc2)
-# colnames(cov.desc)[1]<-"Coverage"
-# colnames(cov.desc)[2]<-"Description"
-
 
 #CREATE COVERAGE REFERENCE FOR PROJECT
 ref<-data
@@ -125,10 +118,7 @@ colnames(cov.desc)[1]<-"Coverage"
 colnames(cov.desc)[2]<-"Description"
 
 #ATTRIBUTE OF ADMIN
-test1<-as.data.frame(admin_attribute)
-test2<-as.character(field_attribute)
-eval(parse(text=(paste("p.admin.df<-aggregate(IDADM~",test2,",data=test1,FUN=mean)", sep=""  ))))
-p.admin.df<-edit(p.admin.df)
+p.admin.df<-read.table(dissolve_table, header=TRUE, sep=",")
 colnames(p.admin.df)[1]="ADMIN_UNIT"
 
 myColors1 <- brewer.pal(9,"Set1")
@@ -184,6 +174,7 @@ save(LUMENS_path_user,
      pu.index,
      pu_pu1,
      pu_rec.index,
+     factor.index,
      lut_carbon.index,
      lut_landuse.index,
      lut_zone.index,
@@ -197,6 +188,8 @@ save(LUMENS_path_user,
      SCIENDO2.index,
      TA1.index,
      TA2.index,
+     win.arch,
+     processing.path,
      resave,
      file=proj.file)
 
@@ -359,7 +352,7 @@ done(rtffile)
 
 command<-paste("start ", "winword ", LUMENS_path, "/LUMENS_Create-Project_report.lpr", sep="" )
 shell(command)
-#CLEAN ENVIRONMENT
-rm(list=ls(all.names=TRUE))
 
-gc()
+statuscode<-1
+statusmessage<-"LUMENS database has been created!"
+statusoutput<-data.frame(statuscode=statuscode, statusmessage=statusmessage)
