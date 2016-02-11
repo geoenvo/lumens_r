@@ -193,8 +193,10 @@ save(LUMENS_path_user,
      resave,
      file=proj.file)
 
+setwd(DATA_path)
+
 #CREATE QGIS PROJECT
-qgsproject<-paste(LUMENS_path, "/", project, ".qgs", sep="")
+qgsproject<-paste(DATA_path, "/", project, ".qgs", sep="")
 sink(qgsproject)
 cat("<!DOCTYPE qgis PUBLIC 'http://mrcc.com/qgis.dtd' 'SYSTEM'>")
 cat('<qgis projectname="" version="2.0.0-Taoge">')
@@ -350,7 +352,7 @@ addPlot(rtffile,plot.fun=print, width=6,height=4.5,res=150,  plot3)
 addNewLine(rtffile)
 done(rtffile)
 
-command<-paste("start ", "winword ", LUMENS_path, "/LUMENS_Create-Project_report.lpr", sep="" )
+command<-paste("start ", "winword ", DATA_path, "/LUMENS_Create-Project_report.lpr", sep="" )
 shell(command)
 
 statuscode<-1
