@@ -55,6 +55,16 @@ if(category==0){
   
   eval(parse(text=(paste("resave(", data_name,"_", landuse.index, ",landuse.index,", period_i, ",freq",  data_name,"_", landuse.index, ",period.index,file=lumens_database)", sep=""))))
   
+  csv_file<-paste(dirname(lumens_database),"/DATA/csv_", category, ".csv", sep="")
+  if(file.exists(list_of_data)){
+    list_of_data<-read.table(csv_file, header=TRUE, sep=",")
+  } else {
+    list_of_data<-data.frame(RST_DATA=NA, RST_NAME=NA, PERIOD=NA, LUT_NAME=NA, row.names=NULL)
+  }
+  eval(parse(text=(paste("add_data<-data.frame(RST_DATA='", data_name, "_", landuse.index,"', RST_NAME=names(", data_name,"_", landuse.index, "), PERIOD=", period, ", LUT_NAME='freq", data_name,"_", landuse.index, "', row.names=NULL)", sep=""))))
+  list_of_data<-rbind(list_of_data,add_data)
+  write.csv(list_of_data, csv_file)
+  
   statuscode<-1
   statusmessage<-"land use/cover data has been added"
 } else if(category==1){
@@ -77,6 +87,16 @@ if(category==0){
   
   eval(parse(text=(paste("resave(lut.pu", pu.index, ",", data_name, pu.index, ",pu.index, file=lumens_database)", sep=""))))
   
+  csv_file<-paste(dirname(lumens_database),"/DATA/csv_", category, ".csv", sep="")
+  if(file.exists(list_of_data)){
+    list_of_data<-read.table(csv_file, header=TRUE, sep=",")
+  } else {
+    list_of_data<-data.frame(RST_DATA=NA, RST_NAME=NA, LUT_NAME=NA, row.names=NULL)
+  }
+  eval(parse(text=(paste("add_data<-data.frame(RST_DATA='", data_name, pu.index,"', RST_NAME=names(", data_name,"_", pu.index, "),", "LUT_NAME='lut.pu", pu.index, "', row.names=NULL)", sep=""))))
+  list_of_data<-rbind(list_of_data,add_data)
+  write.csv(list_of_data, csv_file)
+  
   statuscode<-1
   statusmessage<-"planning unit has been added"
 } else {
@@ -94,7 +114,17 @@ if(category==0){
     statusmessage<-e    
   })
   
-  eval(parse(text=(paste("resave(", data_name, "_", factor.index, ",SCIENDO1.index, file=lumens_database)", sep=""))))
+  eval(parse(text=(paste("resave(", data_name, factor.index, ",factor.index, file=lumens_database)", sep=""))))
+  
+  csv_file<-paste(dirname(lumens_database),"/DATA/csv_", category, ".csv", sep="")
+  if(file.exists(list_of_data)){
+    list_of_data<-read.table(csv_file, header=TRUE, sep=",")
+  } else {
+    list_of_data<-data.frame(RST_DATA=NA, RST_NAME=NA, row.names=NULL)
+  }
+  eval(parse(text=(paste("add_data<-data.frame(RST_DATA='", data_name, factor.index,"', RST_NAME=names(", data_name,"_", factor.index, "), row.names=NULL)", sep=""))))
+  list_of_data<-rbind(list_of_data,add_data)
+  write.csv(list_of_data, csv_file)
   
   statuscode<-1
   statusmessage<-"factor data has been added!"
