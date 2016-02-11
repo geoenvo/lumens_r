@@ -3,7 +3,7 @@
 ##data=raster
 ##period=number 0
 ##description=string
-##attribute_table=output table
+##attribute_table=string
 ##statusoutput=output table
 ##passfilenames
 
@@ -50,12 +50,13 @@ if(category==0){
     statusmessage<-e    
   })
   
-  eval(parse(text=(paste("attribute_table<-as.data.frame(na.omit(freq(", data_name,"_", landuse.index, ")))",  sep=""))))
+  attribute_table<-read.table(attribute_table, header=TRUE, sep=",")
+  eval(parse(text=(paste("freq", data_name, "_", landuse.index, "<-attribute_table",  sep=""))))
   
-  eval(parse(text=(paste("resave(", data_name,"_", landuse.index, ",landuse.index,", period_i, ",period.index,file=lumens_database)", sep=""))))
+  eval(parse(text=(paste("resave(", data_name,"_", landuse.index, ",landuse.index,", period_i, ",freq",  data_name,"_", landuse.index, ",period.index,file=lumens_database)", sep=""))))
   
   statuscode<-1
-  statusmessage<-"editing attribute table stage"
+  statusmessage<-"land use/cover data has been added"
 } else if(category==1){
   category<-"planning_unit"
   data_name<-"pu_pu"
@@ -71,19 +72,20 @@ if(category==0){
     statusmessage<-e    
   })
   
-  eval(parse(text=(paste("attribute_table<-as.data.frame(na.omit(freq(", data_name,"_", pu.index, ")))",  sep=""))))
+  attribute_table<-read.table(attribute_table, header=TRUE, sep=",")
+  eval(parse(text=(paste("lut.pu", pu.index, "<-attribute_table",  sep=""))))
   
-  eval(parse(text=(paste("resave(", data_name, pu.index, ",pu.index, file=lumens_database)", sep=""))))
+  eval(parse(text=(paste("resave(lut.pu", pu.index, ",", data_name, pu.index, ",pu.index, file=lumens_database)", sep=""))))
   
   statuscode<-1
-  statusmessage<-"editing attribute table stage"
+  statusmessage<-"planning unit has been added"
 } else {
   category<-"factor_data"
   data_name<-"factor"
   
   #write index
-  SCIENDO1.index<-SCIENDO1.index+1
-  index1<-SCIENDO1.index
+  factor.index<-factor.index+1
+  index1<-factor.index
   
   tryCatch({
     raster_category(category=category, index=index1, name=data_name, desc=description) 
@@ -92,12 +94,10 @@ if(category==0){
     statusmessage<-e    
   })
   
-  eval(parse(text=(paste("resave(", data_name, "_", SCIENDO1.index, ",SCIENDO1.index, file=lumens_database)", sep=""))))
+  eval(parse(text=(paste("resave(", data_name, "_", factor.index, ",SCIENDO1.index, file=lumens_database)", sep=""))))
   
   statuscode<-1
   statusmessage<-"factor data has been added!"
 }
 
 statusoutput<-data.frame(statuscode=statuscode, statusmessage=statusmessage)
-
-#====next====
