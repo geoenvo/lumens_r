@@ -163,14 +163,16 @@ status_TA1.index<-c("TA1.index", eval(parse(text=(paste("TA1.index")))) )
 status_TA2.index<-c("TA2.index", eval(parse(text=(paste("TA2.index")))) )
 status_admin.index<-c("admin.index", eval(parse(text=(paste("admin.index")))) )
 status_landuse.index<-c("landuse.index", eval(parse(text=(paste("landuse.index")))) )
+status_factor.index<-c("factor.index", eval(parse(text=(paste("factor.index")))) )
+status_lut.index<-c("lut.index", eval(parse(text=(paste("lut.index")))) )
 status_lut_carbon.index<-c("lut_carbon.index", eval(parse(text=(paste("lut_carbon.index")))) )
 status_lut_landuse.index<-c("lut_landuse.index", eval(parse(text=(paste("lut_landuse.index")))) )
 status_lut_zone.index<-c("lut_zone.index", eval(parse(text=(paste("lut_zone.index")))) )
 database_status<-rbind(database_status, status_PUR.index, status_PreQUES.index,
 status_QUESB.index, status_QUESC.index, status_QUESH.index,
 status_SCIENDO1.index, status_SCIENDO2.index, status_TA1.index,
-status_TA2.index, status_admin.index, status_landuse.index,
-status_lut_carbon.index, status_lut_landuse.index, status_lut_zone.index)
+status_TA2.index, status_admin.index, status_landuse.index, status_factor.index,
+status_lut.index, status_lut_carbon.index, status_lut_landuse.index, status_lut_zone.index)
 
 #check period
 status_period<-as.data.frame(as.character(ls(pattern="period")))

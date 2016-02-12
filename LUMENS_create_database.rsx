@@ -34,6 +34,7 @@ QUESH_path <- paste(QUES_path, "/QUES-H", sep="")
 TA_path <- paste(LUMENS_path, "/TA", sep="")
 SCIENDO_path  <- paste(LUMENS_path, "/SCIENDO", sep="")
 DATA_path  <- paste(LUMENS_path, "/DATA", sep="")
+help_path  <- paste(LUMENS_path, "/help", sep="")
 
 dir.create(LUMENS_path, mode="0777")
 dir.create(PUR_path, mode="0777")
@@ -45,6 +46,7 @@ dir.create(QUESH_path, mode="0777")
 dir.create(TA_path, mode="0777")
 dir.create(SCIENDO_path, mode="0777")
 dir.create(DATA_path, mode="0777")
+dir.create(help_path, mode="0777")
 
 #create LUMENS.log
 user_temp_folder<-Sys.getenv("TEMP")
@@ -64,6 +66,7 @@ landuse.index=0
 pu.index=0
 pu_rec.index=0
 factor.index=0
+lut.index=0
 lut_carbon.index=0
 lut_landuse.index=0
 lut_zone.index=0
@@ -175,6 +178,7 @@ save(LUMENS_path_user,
      pu_pu1,
      pu_rec.index,
      factor.index,
+     lut.index,
      lut_carbon.index,
      lut_landuse.index,
      lut_zone.index,

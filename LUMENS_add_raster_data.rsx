@@ -56,7 +56,7 @@ if(category==0){
   eval(parse(text=(paste("resave(", data_name,"_", landuse.index, ",landuse.index,", period_i, ",freq",  data_name,"_", landuse.index, ",period.index,file=lumens_database)", sep=""))))
   
   csv_file<-paste(dirname(lumens_database),"/DATA/csv_", category, ".csv", sep="")
-  if(file.exists(list_of_data)){
+  if(file.exists(csv_file)){
     list_of_data<-read.table(csv_file, header=TRUE, sep=",")
   } else {
     list_of_data<-data.frame(RST_DATA=NA, RST_NAME=NA, PERIOD=NA, LUT_NAME=NA, row.names=NULL)
@@ -88,7 +88,7 @@ if(category==0){
   eval(parse(text=(paste("resave(lut.pu", pu.index, ",", data_name, pu.index, ",pu.index, file=lumens_database)", sep=""))))
   
   csv_file<-paste(dirname(lumens_database),"/DATA/csv_", category, ".csv", sep="")
-  if(file.exists(list_of_data)){
+  if(file.exists(csv_file)){
     list_of_data<-read.table(csv_file, header=TRUE, sep=",")
   } else {
     list_of_data<-data.frame(RST_DATA=NA, RST_NAME=NA, LUT_NAME=NA, row.names=NULL)
@@ -117,7 +117,7 @@ if(category==0){
   eval(parse(text=(paste("resave(", data_name, factor.index, ",factor.index, file=lumens_database)", sep=""))))
   
   csv_file<-paste(dirname(lumens_database),"/DATA/csv_", category, ".csv", sep="")
-  if(file.exists(list_of_data)){
+  if(file.exists(csv_file)){
     list_of_data<-read.table(csv_file, header=TRUE, sep=",")
   } else {
     list_of_data<-data.frame(RST_DATA=NA, RST_NAME=NA, row.names=NULL)
