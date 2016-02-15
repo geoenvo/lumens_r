@@ -1,5 +1,5 @@
 ##Alpha - DATABASE=group
-##category=selection Land Use/Cover; Planning Unit
+##type=selection Land Use/Cover; Planning Unit
 ##data=vector
 ##attribute_field_id=field data
 ##period=number 0
@@ -39,16 +39,16 @@ osgeo_comm<-paste(gdalraster, shp_dir, file_out,"-a IDADM -tr", res, res, "-a_no
 system(osgeo_comm)
 
 command="raster"
-raster_category<-function(category, raster_data, index, name, desc) {
-  eval(parse(text=(paste(name,"_", index, "<<-", command,'("', raster_data, '")', sep=""))))
-  eval(parse(text=(paste(name,"_", index, "<<-spatial_sync_raster(",name,"_", index, ',', 'ref, method = "ngb")', sep=""))))
-  eval(parse(text=(paste(name,"_", index, "<<-", name,"_", index, "*1",  sep=""))))
-  eval(parse(text=(paste("names(",name,"_", index, ")<<-desc", sep=""))))
-  eval(parse(text=(paste("",name,"_", index, "@title<<-category", sep=""))))
+raster_category<-function(category, raster_data, name, desc) {
+  eval(parse(text=(paste(name, "<<-", command,'("', raster_data, '")', sep=""))))
+  eval(parse(text=(paste(name, "<<-spatial_sync_raster(",name,"_", index, ',', 'ref, method = "ngb")', sep=""))))
+  eval(parse(text=(paste(name, "<<-", name, "*1",  sep=""))))
+  eval(parse(text=(paste("names(",name, ")<<-desc", sep=""))))
+  eval(parse(text=(paste(name, "@title<<-category", sep=""))))
 }
 
 tif_file<-file_out
-if(category==0){
+if(type==0){
   category<-"land_use_cover"
   data_name<-"Landuse"
   
@@ -61,7 +61,7 @@ if(category==0){
   index1<-landuse.index
   
   tryCatch({
-    raster_category(category=category, raster_data=tif_file, index=index1, name=data_name, desc=description) 
+    raster_category(category=category, raster_data=tif_file, name=paste(data_name, "_", index1, sep=""), desc=description) 
   }, error=function(e){ 
     statuscode<-0
     statusmessage<-e    
@@ -78,11 +78,12 @@ if(category==0){
   csv_file<-paste(dirname(lumens_database),"/DATA/csv_", category, ".csv", sep="")
   if(file.exists(csv_file)){
     list_of_data<-read.table(csv_file, header=TRUE, sep=",")
+    eval(parse(text=(paste("add_data<-data.frame(RST_DATA='", data_name, "_", landuse.index,"', RST_NAME=names(", data_name,"_", landuse.index, "), PERIOD=", period, ", LUT_NAME='freq", data_name,"_", landuse.index, "', row.names=NULL)", sep=""))))
+    list_of_data<-rbind(list_of_data,add_data)
   } else {
-    list_of_data<-data.frame(RST_DATA=NA, RST_NAME=NA, PERIOD=NA, LUT_NAME=NA, row.names=NULL)
+    eval(parse(text=(paste("list_of_data<-data.frame(RST_DATA='", data_name, "_", landuse.index,"', RST_NAME=names(", data_name,"_", landuse.index, "), PERIOD=", period, ", LUT_NAME='freq", data_name,"_", landuse.index, "', row.names=NULL)", sep=""))))
   }
-  eval(parse(text=(paste("add_data<-data.frame(RST_DATA='", data_name, "_", landuse.index,"', RST_NAME=names(", data_name,"_", landuse.index, "), PERIOD=", period, ", LUT_NAME='freq", data_name,"_", landuse.index, "', row.names=NULL)", sep=""))))
-  list_of_data<-rbind(list_of_data,add_data)
+
   write.csv(list_of_data, csv_file)  
   
   statuscode<-1
@@ -96,7 +97,7 @@ if(category==0){
   index1<-pu.index
   
   tryCatch({
-    raster_category(category=category, raster_data=tif_file, index=index1, name=data_name, desc=description)
+    raster_category(category=category, raster_data=tif_file, name=paste(data_name, index1, sep=""), desc=description)
   }, error=function(e){ 
     statuscode<-0
     statusmessage<-e    
@@ -111,11 +112,11 @@ if(category==0){
   csv_file<-paste(dirname(lumens_database),"/DATA/csv_", category, ".csv", sep="")
   if(file.exists(csv_file)){
     list_of_data<-read.table(csv_file, header=TRUE, sep=",")
+    eval(parse(text=(paste("add_data<-data.frame(RST_DATA='", data_name, pu.index,"', RST_NAME=names(", data_name, pu.index, "),", "LUT_NAME='lut.pu", pu.index, "', row.names=NULL)", sep=""))))
+    list_of_data<-rbind(list_of_data,add_data)
   } else {
-    list_of_data<-data.frame(RST_DATA=NA, RST_NAME=NA, LUT_NAME=NA, row.names=NULL)
+    eval(parse(text=(paste("list_of_data<-data.frame(RST_DATA='", data_name, pu.index,"', RST_NAME=names(", data_name, pu.index, "),", "LUT_NAME='lut.pu", pu.index, "', row.names=NULL)", sep=""))))
   }
-  eval(parse(text=(paste("add_data<-data.frame(RST_DATA='", data_name, pu.index,"', RST_NAME=names(", data_name,"_", pu.index, "),", "LUT_NAME='lut.pu", pu.index, "', row.names=NULL)", sep=""))))
-  list_of_data<-rbind(list_of_data,add_data)
   write.csv(list_of_data, csv_file)
   
   statuscode<-1

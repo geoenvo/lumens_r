@@ -1,5 +1,5 @@
 ##Alpha - DATABASE=group
-##category=selection Land Use/Cover; Planning Unit; Factor
+##type=selection Land Use/Cover; Planning Unit; Factor
 ##data=raster
 ##period=number 0
 ##description=string
@@ -22,16 +22,16 @@ lumens_database<-proj.file
 
 #RASTER COMMAND
 command="raster"
-raster_category<-function(category, index, name, desc) {
-  eval(parse(text=(paste(name,"_", index, "<<-", command,'("', data, '")', sep=""))))
-  eval(parse(text=(paste(name,"_", index, "<<-spatial_sync_raster(",name,"_", index, ',', 'ref, method = "ngb")', sep=""))))
-  eval(parse(text=(paste(name,"_", index, "<<-", name,"_", index, "*1",  sep=""))))
-  eval(parse(text=(paste("names(",name,"_", index, ")<<-desc", sep=""))))
-  eval(parse(text=(paste("",name,"_", index, "@title<<-category", sep=""))))
+raster_category<-function(category, name, desc) {
+  eval(parse(text=(paste(name, "<<-", command,'("', data, '")', sep=""))))
+  eval(parse(text=(paste(name, "<<-spatial_sync_raster(", name, ',', 'ref, method = "ngb")', sep=""))))
+  eval(parse(text=(paste(name, "<<-", name, "*1",  sep=""))))
+  eval(parse(text=(paste("names(", name, ")<<-desc", sep=""))))
+  eval(parse(text=(paste(name, "@title<<-category", sep=""))))
 }
 
-#CLASSIFY RASTER INTO THREE CATEGORY INPUT 
-if(category==0){
+#CLASSIFY RASTER INTO THREE TYPES INPUT 
+if(type==0){
   category<-"land_use_cover"
   data_name<-"Landuse"
   
@@ -44,30 +44,31 @@ if(category==0){
   index1<-landuse.index
   
   tryCatch({
-    raster_category(category=category, index=index1, name=data_name, desc=description) 
+    raster_category(category=category, name=paste(data_name, "_", index1, sep=""), desc=description) 
   }, error=function(e){ 
     statuscode<-0
     statusmessage<-e    
   })
   
-  attribute_table<-read.table(attribute_table, header=TRUE, sep=",")
+  attribute_table<-read.table(attribute_table, sep=",")
+  colnames(attribute_table)<-c("ID", "Legend", "Classified")
   eval(parse(text=(paste("freq", data_name, "_", landuse.index, "<-attribute_table",  sep=""))))
   
   eval(parse(text=(paste("resave(", data_name,"_", landuse.index, ",landuse.index,", period_i, ",freq",  data_name,"_", landuse.index, ",period.index,file=lumens_database)", sep=""))))
   
   csv_file<-paste(dirname(lumens_database),"/DATA/csv_", category, ".csv", sep="")
   if(file.exists(csv_file)){
-    list_of_data<-read.table(csv_file, header=TRUE, sep=",")
+    list_of_data<-read.table(csv_file, header=TRUE, sep=",", row.names=NULL)
+    eval(parse(text=(paste("add_data<-data.frame(RST_DATA='", data_name, "_", landuse.index,"', RST_NAME=names(", data_name,"_", landuse.index, "), PERIOD=", period, ", LUT_NAME='freq", data_name,"_", landuse.index, "', row.names=NULL)", sep=""))))
+    list_of_data<-rbind(list_of_data,add_data)
   } else {
-    list_of_data<-data.frame(RST_DATA=NA, RST_NAME=NA, PERIOD=NA, LUT_NAME=NA, row.names=NULL)
+    eval(parse(text=(paste("list_of_data<-data.frame(RST_DATA='", data_name, "_", landuse.index,"', RST_NAME=names(", data_name,"_", landuse.index, "), PERIOD=", period, ", LUT_NAME='freq", data_name,"_", landuse.index, "', row.names=NULL)", sep=""))))
   }
-  eval(parse(text=(paste("add_data<-data.frame(RST_DATA='", data_name, "_", landuse.index,"', RST_NAME=names(", data_name,"_", landuse.index, "), PERIOD=", period, ", LUT_NAME='freq", data_name,"_", landuse.index, "', row.names=NULL)", sep=""))))
-  list_of_data<-rbind(list_of_data,add_data)
-  write.csv(list_of_data, csv_file)
+  write.table(list_of_data, csv_file, quote=FALSE, row.names=FALSE, sep=",")
   
   statuscode<-1
   statusmessage<-"land use/cover data has been added"
-} else if(category==1){
+} else if(type==1){
   category<-"planning_unit"
   data_name<-"pu_pu"
   
@@ -76,13 +77,14 @@ if(category==0){
   index1<-pu.index
   
   tryCatch({
-    raster_category(category=category, index=index1, name=data_name, desc=description) 
+    raster_category(category=category, name=paste(data_name, index1, sep=""), desc=description) 
   }, error=function(e){ 
     statuscode<-0
     statusmessage<-e    
   })
   
-  attribute_table<-read.table(attribute_table, header=TRUE, sep=",")
+  attribute_table<-read.table(attribute_table, sep=",")
+  colnames(attribute_table)<-c("ID", "Legend")
   eval(parse(text=(paste("lut.pu", pu.index, "<-attribute_table",  sep=""))))
   
   eval(parse(text=(paste("resave(lut.pu", pu.index, ",", data_name, pu.index, ",pu.index, file=lumens_database)", sep=""))))
@@ -90,16 +92,16 @@ if(category==0){
   csv_file<-paste(dirname(lumens_database),"/DATA/csv_", category, ".csv", sep="")
   if(file.exists(csv_file)){
     list_of_data<-read.table(csv_file, header=TRUE, sep=",")
+    eval(parse(text=(paste("add_data<-data.frame(RST_DATA='", data_name, pu.index,"', RST_NAME=names(", data_name, pu.index, "),", "LUT_NAME='lut.pu", pu.index, "', row.names=NULL)", sep=""))))
+    list_of_data<-rbind(list_of_data,add_data)
   } else {
-    list_of_data<-data.frame(RST_DATA=NA, RST_NAME=NA, LUT_NAME=NA, row.names=NULL)
+    eval(parse(text=(paste("list_of_data<-data.frame(RST_DATA='", data_name, pu.index,"', RST_NAME=names(", data_name, pu.index, "),", "LUT_NAME='lut.pu", pu.index, "', row.names=NULL)", sep=""))))
   }
-  eval(parse(text=(paste("add_data<-data.frame(RST_DATA='", data_name, pu.index,"', RST_NAME=names(", data_name,"_", pu.index, "),", "LUT_NAME='lut.pu", pu.index, "', row.names=NULL)", sep=""))))
-  list_of_data<-rbind(list_of_data,add_data)
-  write.csv(list_of_data, csv_file)
+  write.table(list_of_data, csv_file, quote=FALSE, row.names=FALSE, sep=",")
   
   statuscode<-1
   statusmessage<-"planning unit has been added"
-} else {
+} else if(type==2){
   category<-"factor_data"
   data_name<-"factor"
   
@@ -108,7 +110,7 @@ if(category==0){
   index1<-factor.index
   
   tryCatch({
-    raster_category(category=category, index=index1, name=data_name, desc=description) 
+    raster_category(category=category, name=paste(data_name, index1, sep=""), desc=description) 
   }, error=function(e){ 
     statuscode<-0
     statusmessage<-e    
@@ -119,12 +121,12 @@ if(category==0){
   csv_file<-paste(dirname(lumens_database),"/DATA/csv_", category, ".csv", sep="")
   if(file.exists(csv_file)){
     list_of_data<-read.table(csv_file, header=TRUE, sep=",")
+    eval(parse(text=(paste("add_data<-data.frame(RST_DATA='", data_name, factor.index,"', RST_NAME=names(", data_name, factor.index, "), row.names=NULL)", sep=""))))
+    list_of_data<-rbind(list_of_data,add_data)
   } else {
-    list_of_data<-data.frame(RST_DATA=NA, RST_NAME=NA, row.names=NULL)
+    eval(parse(text=(paste("list_of_data<-data.frame(RST_DATA='", data_name, factor.index,"', RST_NAME=names(", data_name, factor.index, "), row.names=NULL)", sep=""))))
   }
-  eval(parse(text=(paste("add_data<-data.frame(RST_DATA='", data_name, factor.index,"', RST_NAME=names(", data_name,"_", factor.index, "), row.names=NULL)", sep=""))))
-  list_of_data<-rbind(list_of_data,add_data)
-  write.csv(list_of_data, csv_file)
+  write.table(list_of_data, csv_file, quote=FALSE, row.names=FALSE, sep=",")
   
   statuscode<-1
   statusmessage<-"factor data has been added!"

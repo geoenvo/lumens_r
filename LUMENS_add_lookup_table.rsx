@@ -26,12 +26,12 @@ eval(parse(text=(paste("resave(lut", lut.index, ",lut.index, file=lumens_databas
 csv_file<-paste(dirname(lumens_database),"/DATA/csv_lookup_table.csv", sep="")
 if(file.exists(csv_file)){
   list_of_data<-read.table(csv_file, header=TRUE, sep=",")
+  eval(parse(text=(paste("add_data<-data.frame(TBL_DATA='lut", lut.index,"', TBL_NAME='", description, "', row.names=NULL)", sep=""))))
+  list_of_data<-rbind(list_of_data,add_data)
 } else {
-  list_of_data<-data.frame(TBL_NAME=NA, TBL_DSC=NA, row.names=NULL)
+  eval(parse(text=(paste("list_of_data<-data.frame(TBL_DATA='lut", lut.index,"', TBL_NAME='", description, "', row.names=NULL)", sep=""))))
 }
-eval(parse(text=(paste("add_data<-data.frame(TBL_NAME='lut", lut.index,"', TBL_DSC='", description, "', row.names=NULL)", sep=""))))
-list_of_data<-rbind(list_of_data,add_data)
-write.csv(list_of_data, csv_file)
+write.table(list_of_data, csv_file, quote=FALSE, row.names=FALSE, sep=",")
 
 statuscode<-1
 statusmessage<-"Lookup table has been added"
