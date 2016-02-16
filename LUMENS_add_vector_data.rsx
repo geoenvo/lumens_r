@@ -38,16 +38,14 @@ if (file.exists("C:/Program Files (x86)/LUMENS/bin/gdal_rasterize.exe")){
 osgeo_comm<-paste(gdalraster, shp_dir, file_out,"-a IDADM -tr", res, res, "-a_nodata 255 -ot Byte", sep=" ")
 system(osgeo_comm)
 
-command="raster"
 raster_category<-function(category, raster_data, name, desc) {
-  eval(parse(text=(paste(name, "<<-", command,'("', raster_data, '")', sep=""))))
-  eval(parse(text=(paste(name, "<<-spatial_sync_raster(",name,"_", index, ',', 'ref, method = "ngb")', sep=""))))
+  eval(parse(text=(paste(name, "<<-spatial_sync_raster(raster_data, ref, method = 'ngb')", sep=""))))
   eval(parse(text=(paste(name, "<<-", name, "*1",  sep=""))))
   eval(parse(text=(paste("names(",name, ")<<-desc", sep=""))))
   eval(parse(text=(paste(name, "@title<<-category", sep=""))))
 }
 
-tif_file<-file_out
+tif_file<-raster(file_out)
 if(type==0){
   category<-"land_use_cover"
   data_name<-"Landuse"
@@ -67,7 +65,8 @@ if(type==0){
     statusmessage<-e    
   })
   
-  attribute_table<-read.table(attribute_table, header=TRUE, sep=",")
+  attribute_table<-read.table(attribute_table, sep=",")
+  colnames(attribute_table)<-c("Legend", "Classified")
   eval(parse(text=(paste("freq", data_name, "_", landuse.index, "<-attribute_table",  sep=""))))
   #Does it still need to be merged? Worth trying..
   #eval(parse(text=(paste("attribute_table<-as.data.frame(na.omit(freq(", data_name,"_", landuse.index, ")))",  sep=""))))
@@ -83,8 +82,7 @@ if(type==0){
   } else {
     eval(parse(text=(paste("list_of_data<-data.frame(RST_DATA='", data_name, "_", landuse.index,"', RST_NAME=names(", data_name,"_", landuse.index, "), PERIOD=", period, ", LUT_NAME='freq", data_name,"_", landuse.index, "', row.names=NULL)", sep=""))))
   }
-
-  write.csv(list_of_data, csv_file)  
+  write.table(list_of_data, csv_file, quote=FALSE, row.names=FALSE, sep=",")
   
   statuscode<-1
   statusmessage<-"land use/cover data has been added"
@@ -103,7 +101,9 @@ if(type==0){
     statusmessage<-e    
   })
   
-  attribute_table<-read.table(attribute_table, header=TRUE, sep=",")
+  attribute_table<-read.table(attribute_table, sep=",")
+  colnames(attribute_table)<-c(attribute_field_id, "IDS")
+  #null kolom ketiga
   eval(parse(text=(paste("lut.pu", pu.index, "<-attribute_table",  sep=""))))
   #merge(?)
   
@@ -117,7 +117,7 @@ if(type==0){
   } else {
     eval(parse(text=(paste("list_of_data<-data.frame(RST_DATA='", data_name, pu.index,"', RST_NAME=names(", data_name, pu.index, "),", "LUT_NAME='lut.pu", pu.index, "', row.names=NULL)", sep=""))))
   }
-  write.csv(list_of_data, csv_file)
+  write.table(list_of_data, csv_file, quote=FALSE, row.names=FALSE, sep=",")
   
   statuscode<-1
   statusmessage<-"planning unit has been added"
