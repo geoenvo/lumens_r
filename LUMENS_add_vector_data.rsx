@@ -7,8 +7,8 @@
 ##attribute_table=string
 ##statusoutput=output table
 
-library(foreign)
 library(stringr)
+library(spatial.tools)
 
 #READ LUMENS LOG FILE
 user_temp_folder<-Sys.getenv("TEMP")
@@ -68,9 +68,9 @@ if(type==0){
   attribute_table<-read.table(attribute_table, sep=",")
   colnames(attribute_table)<-c("Legend", "Classified")
   eval(parse(text=(paste("freq", data_name, "_", landuse.index, "<-attribute_table",  sep=""))))
+  #merge with existing freqTable (?)
   #Does it still need to be merged? Worth trying..
   #eval(parse(text=(paste("attribute_table<-as.data.frame(na.omit(freq(", data_name,"_", landuse.index, ")))",  sep=""))))
-  #merge (?)
   
   eval(parse(text=(paste("resave(", data_name,"_", landuse.index, ",landuse.index,", period_i, ",period.index,file=lumens_database)", sep=""))))
   
@@ -98,11 +98,12 @@ if(type==0){
     raster_category(category=category, raster_data=tif_file, name=paste(data_name, index1, sep=""), desc=description)
   }, error=function(e){ 
     statuscode<-0
-    statusmessage<-e    
+    statusmessage<-e 
+    print(e)
   })
   
   attribute_table<-read.table(attribute_table, sep=",")
-  colnames(attribute_table)<-c(attribute_field_id, "IDS")
+  colnames(attribute_table)<-c(attribute_field_id, "ID")
   #null kolom ketiga
   eval(parse(text=(paste("lut.pu", pu.index, "<-attribute_table",  sep=""))))
   #merge(?)
