@@ -60,7 +60,6 @@ cat(working_directory, project, time_start, sep=",")
 sink()
 
 #WRITE PROJECT PROPERTIES
-#project_name<-paste(project,".lpj", sep="")
 db_name<-paste(project, ".lpj", sep="")
 landuse.index=0
 pu.index=0
@@ -160,42 +159,51 @@ colnames(proj_descr)[2]<-"Description"
 proj_descr<-as.data.frame(proj_descr)
 proj.file<-paste(LUMENS_path, "/",project,".lpj", sep="")
 
-pu_pu1<-ref
-names(pu_pu1)<-"Administrative maps"
+names(ref)<-"Administrative maps"
 
 save(LUMENS_path_user,
-     landuse.index,
-     proj_descr,
-     ref,
-     location,
-     province,
-     country,
-     p.admin.df,
-     ref.index,
-     admin.index,
-     cov.desc,
-     pu.index,
-     pu_pu1,
-     pu_rec.index,
-     factor.index,
-     lut.index,
-     lut_carbon.index,
-     lut_landuse.index,
-     lut_zone.index,
-     period.index,
-     PUR.index,
-     PreQUES.index,
-     QUESC.index,
-     QUESB.index,
-     QUESH.index,
-     SCIENDO1.index,
-     SCIENDO2.index,
-     TA1.index,
-     TA2.index,
-     win.arch,
-     processing.path,
-     resave,
-     file=proj.file)
+landuse.index,
+proj_descr,
+ref,
+p.admin.df,
+location,
+province,
+country,
+ref.index,
+admin.index,
+cov.desc,
+pu.index,
+pu_rec.index,
+factor.index,
+lut.index,
+lut_carbon.index,
+lut_landuse.index,
+lut_zone.index,
+period.index,
+PUR.index,
+PreQUES.index,
+QUESC.index,
+QUESB.index,
+QUESH.index,
+SCIENDO1.index,
+SCIENDO2.index,
+TA1.index,
+TA2.index,
+win.arch,
+processing.path,
+resave, file=proj.file)
+
+#WRITE REFERENCE DATA TO CSV
+csv_file<-paste(DATA_path,"/csv_planning_unit.csv", sep="")
+eval(parse(text=(paste("list_of_data_pu<-data.frame(RST_DATA='ref', RST_NAME=names(ref), LUT_NAME='p.admin.df', row.names=NULL)", sep=""))))
+write.table(list_of_data_pu, csv_file, quote=FALSE, row.names=FALSE, sep=",")
+
+#CREATE NEW ENVIRONMENT AND RDB FOR LAZYLOAD NEEDS
+e=new.env(parent=emptyenv())
+e$list_of_data_pu<-list_of_data_pu
+e$ref<-ref
+e$p.admin.df<-p.admin.df
+tools:::makeLazyLoadDB(e, paste(DATA_path, "/planning_unit", sep=""))
 
 setwd(DATA_path)
 
