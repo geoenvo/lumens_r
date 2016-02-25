@@ -25,7 +25,7 @@ load(proj.file)
 #WRITE VECTORS 
 setwd(LUMENS_temp_user)
 description<-str_replace_all(string=description, pattern=" ", repl=".")
-writeOGR(data, dsn=LUMENS_temp_user, description, driver="ESRI Shapefile")
+writeOGR(data, dsn=LUMENS_temp_user, description, overwrite_layer=TRUE, driver="ESRI Shapefile")
 
 shp_dir<-paste(LUMENS_temp_user,"/", description, ".shp", sep="")
 file_out<-paste(LUMENS_temp_user, "/", description,  ".tif", sep="")
@@ -44,6 +44,10 @@ raster_category<-function(category, raster_data, name, desc) {
   eval(parse(text=(paste("names(",name, ")<<-desc", sep=""))))
   eval(parse(text=(paste(name, "@title<<-category", sep=""))))
 }
+
+#SET PATH OF DATA DIRECTORY 
+data_dir<-paste(dirname(proj.file), "/DATA/", sep="")
+setwd(data_dir)
 
 tif_file<-raster(file_out)
 if(type==0){
@@ -72,18 +76,43 @@ if(type==0){
   #Does it still need to be merged? Worth trying..
   #eval(parse(text=(paste("attribute_table<-as.data.frame(na.omit(freq(", data_name,"_", landuse.index, ")))",  sep=""))))
   
-  eval(parse(text=(paste("resave(", data_name,"_", landuse.index, ",landuse.index,", period_i, ",period.index,file=lumens_database)", sep=""))))
-  
-  csv_file<-paste(dirname(lumens_database),"/DATA/csv_", category, ".csv", sep="")
+  #write raster detail to csv
+  csv_file<-paste(dirname(proj.file),"/DATA/csv_", category, ".csv", sep="")
   if(file.exists(csv_file)){
-    list_of_data<-read.table(csv_file, header=TRUE, sep=",")
+    list_of_data_luc<-read.table(csv_file, header=TRUE, sep=",", row.names=NULL)
     eval(parse(text=(paste("add_data<-data.frame(RST_DATA='", data_name, "_", landuse.index,"', RST_NAME=names(", data_name,"_", landuse.index, "), PERIOD=", period, ", LUT_NAME='freq", data_name,"_", landuse.index, "', row.names=NULL)", sep=""))))
-    list_of_data<-rbind(list_of_data,add_data)
+    list_of_data_luc<-rbind(list_of_data_luc,add_data)
   } else {
-    eval(parse(text=(paste("list_of_data<-data.frame(RST_DATA='", data_name, "_", landuse.index,"', RST_NAME=names(", data_name,"_", landuse.index, "), PERIOD=", period, ", LUT_NAME='freq", data_name,"_", landuse.index, "', row.names=NULL)", sep=""))))
+    eval(parse(text=(paste("list_of_data_luc<-data.frame(RST_DATA='", data_name, "_", landuse.index,"', RST_NAME=names(", data_name,"_", landuse.index, "), PERIOD=", period, ", LUT_NAME='freq", data_name,"_", landuse.index, "', row.names=NULL)", sep=""))))
   }
-  write.table(list_of_data, csv_file, quote=FALSE, row.names=FALSE, sep=",")
-  
+  write.table(list_of_data_luc, csv_file, quote=FALSE, row.names=FALSE, sep=",")
+
+  #check existing rdb and rdx, then load to environment
+  file_rdb<-paste(category, ".rdb", sep="")
+  file_rdx<-paste(category, ".rdx", sep="")
+  check_rdb<-file.exists(paste(data_dir, file_rdb, sep=""))
+  check_rdx<-file.exists(paste(data_dir, file_rdx, sep=""))
+  tmpEnv<-new.env(parent = emptyenv())
+  if(check_rdb & check_rdx){
+    lazyLoad(category, tmpEnv)  
+  } 
+  #write new data to new environment
+  eval(parse(text=(paste("tmpEnv$", data_name, "_", landuse.index, "<-", data_name, "_", landuse.index, sep="")))) 
+  eval(parse(text=(paste("tmpEnv$freq", data_name, "_", landuse.index, "<-freq", data_name,"_", landuse.index, sep="" ))))
+  tmpEnv$list_of_data_luc<-list_of_data_luc
+  ls.str(tmpEnv) 
+  #make lazyLoad database
+  if(check_rdb & check_rdx){
+    tools:::makeLazyLoadDB(tmpEnv, paste(category, "_temp", sep=""))
+    unlink(file_rdb)
+    unlink(file_rdx)
+    file.rename(paste(category, "_temp.rdb", sep=""), paste(category, ".rdb", sep=""))
+    file.rename(paste(category, "_temp.rdx", sep=""), paste(category, ".rdx", sep=""))
+  } else {
+    tools:::makeLazyLoadDB(tmpEnv, category)
+  }
+  eval(parse(text=(paste("resave(landuse.index, period.index, ", period_i, ", file=proj.file)", sep=""))))
+    
   statuscode<-1
   statusmessage<-"land use/cover data has been added"
 } else {
@@ -108,17 +137,41 @@ if(type==0){
   eval(parse(text=(paste("lut.pu", pu.index, "<-attribute_table",  sep=""))))
   #merge(?)
   
-  eval(parse(text=(paste("resave(lut.pu", pu.index, ",", data_name, pu.index, ",pu.index, file=lumens_database)", sep=""))))
-  
-  csv_file<-paste(dirname(lumens_database),"/DATA/csv_", category, ".csv", sep="")
+  csv_file<-paste(dirname(proj.file),"/DATA/csv_", category, ".csv", sep="")
   if(file.exists(csv_file)){
-    list_of_data<-read.table(csv_file, header=TRUE, sep=",")
+    list_of_data_pu<-read.table(csv_file, header=TRUE, sep=",")
     eval(parse(text=(paste("add_data<-data.frame(RST_DATA='", data_name, pu.index,"', RST_NAME=names(", data_name, pu.index, "),", "LUT_NAME='lut.pu", pu.index, "', row.names=NULL)", sep=""))))
-    list_of_data<-rbind(list_of_data,add_data)
+    list_of_data_pu<-rbind(list_of_data_pu,add_data)
   } else {
-    eval(parse(text=(paste("list_of_data<-data.frame(RST_DATA='", data_name, pu.index,"', RST_NAME=names(", data_name, pu.index, "),", "LUT_NAME='lut.pu", pu.index, "', row.names=NULL)", sep=""))))
+    eval(parse(text=(paste("list_of_data_pu<-data.frame(RST_DATA='", data_name, pu.index,"', RST_NAME=names(", data_name, pu.index, "),", "LUT_NAME='lut.pu", pu.index, "', row.names=NULL)", sep=""))))
   }
-  write.table(list_of_data, csv_file, quote=FALSE, row.names=FALSE, sep=",")
+  write.table(list_of_data_pu, csv_file, quote=FALSE, row.names=FALSE, sep=",")
+  
+  #check existing rdb and rdx, then load to environment
+  file_rdb<-paste(category, ".rdb", sep="")
+  file_rdx<-paste(category, ".rdx", sep="")
+  check_rdb<-file.exists(paste(data_dir, file_rdb, sep=""))
+  check_rdx<-file.exists(paste(data_dir, file_rdx, sep=""))
+  tmpEnv<-new.env(parent = emptyenv())
+  if(check_rdb & check_rdx){
+    lazyLoad(category, tmpEnv)  
+  } 
+  #write new data to new environment
+  eval(parse(text=(paste("tmpEnv$", data_name, pu.index, "<-", data_name, pu.index, sep="")))) 
+  eval(parse(text=(paste("tmpEnv$lut.pu", pu.index, "<-lut.pu", pu.index, sep="" ))))
+  tmpEnv$list_of_data_pu<-list_of_data_pu
+  ls.str(tmpEnv) 
+  #make lazyLoad database
+  if(check_rdb & check_rdx){
+    tools:::makeLazyLoadDB(tmpEnv, paste(category, "_temp", sep=""))
+    unlink(file_rdb)
+    unlink(file_rdx)
+    file.rename(paste(category, "_temp.rdb", sep=""), paste(category, ".rdb", sep=""))
+    file.rename(paste(category, "_temp.rdx", sep=""), paste(category, ".rdx", sep=""))
+  } else {
+    tools:::makeLazyLoadDB(tmpEnv, category)
+  }
+  resave(pu.index, file=proj.file)
   
   statuscode<-1
   statusmessage<-"planning unit has been added"

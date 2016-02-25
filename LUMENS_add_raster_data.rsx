@@ -55,8 +55,7 @@ if(type==0){
   })
   
   #create attribute table
-  #attribute_table<-read.table(attribute_table, sep=",")
-  attribute_table<-read.table(attribute_table, sep=",", header = T)
+  attribute_table<-read.table(attribute_table, sep=",")
   colnames(attribute_table)<-c("ID", "Legend", "Classified")
   eval(parse(text=(paste("freq", data_name, "_", landuse.index, "<-attribute_table",  sep=""))))
   
