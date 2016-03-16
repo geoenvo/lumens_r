@@ -77,6 +77,7 @@ dim<-ncol(int_con.m)
 int_con.ctot<-colSums(int_con.m)
 add_val.ctot<-colSums(add_val.m)
 fin_con<- 1/(int_con.ctot+add_val.ctot)
+fin_con[is.infinite(fin_con)]<-0
 t.input.invers<-diag(fin_con)
 A<-int_con.m %*% t.input.invers
 I<-as.matrix(diag(dim))
@@ -153,6 +154,7 @@ colnames(GDP)[2] <- "CATEGORY"
 colnames(GDP)[3] <- "GDP"
 colnames(GDP)[4] <- "OUTPUT"
 GDP$GDP_PROP<-GDP$GDP/GDP$OUTPUT
+GDP[is.na(GDP)]<-0
 colnames(GDP)[5] <- "P_OUTPUT"
 GDP_tot<-as.matrix(GDP$GDP)
 GDP_tot<-colSums(GDP_tot)

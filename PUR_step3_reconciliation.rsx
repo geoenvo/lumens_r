@@ -48,19 +48,24 @@ colnames(lookup_ref)[1]<-"REFERENCE"
 #====PREPARE PLANNING UNIT FILE====
 file<-datalist
 file.number <- nrow(datalist)
+cmd <- paste()
 command1 <- paste()
 command2 <- paste()
 command3 <- paste()
 central_attr<-NULL
 for(i in 1:file.number) {
   input <- as.character(file[i,])
-  eval(parse(text=(paste("pu", i, ' <- ', 'raster("', input, '")', sep="")))) #pu1 <- rasterize(pu_v1, r)
+  eval(parse(text=(paste("pu", i, ' <- ', 'raster("', input, '")', sep="")))) 
   eval(parse(text=(paste("pu", i, '.name<-names(pu', i, ')', sep=""))))
   eval(parse(text=(paste("pu", i, ".name<-substr(pu", i, ".name, 1, nchar(pu", i, ".name) - 3)", sep=""))))
   eval(parse(text=(paste( "central_attr<-append(central_attr, pu", i, ".name)", sep=""     ))))
-
+  
   eval(parse(text=(paste("pu", i, "<-spatial_sync_raster(pu", i, ',ref, method = "ngb")', sep=""))))
-  eval(parse(text=(paste("pu", i, "[is.na(pu", i, ")]<-0", sep="")))) #pu1[is.na(pu1)]<-0
+  eval(parse(text=(paste("pu", i, "[is.na(pu", i, ")]<-0", sep="")))) 
+  
+  j=file.number+1-i
+  eval(parse(text=(paste("R", i, "<-pu", i, "*(100^(", j, "))", sep=""))))
+  cmd<-paste(cmd,"R", i, "+", sep="")
   
   if (i != file.number) {
     command1<-paste(command1, "pu", i, ",", sep="")
@@ -75,27 +80,36 @@ for(i in 1:file.number) {
 
 #====COMBINE PLANNING UNIT FILES AND REFERENCE FILE====
 ref.number <- file.number+1 #numOfReference
-PUR <- ref 
-command1 <- paste(command1, ",ref", sep="") 
-command2 <- paste(command2, ",ref[]", sep="") 
+#PUR <- ref
+eval(parse(text=(paste("R", ref.number, "<-ref*1", sep=""))))
+cmd<-paste(cmd,"R", ref.number, sep="")
+command1 <- paste(command1, ",ref", sep="")
+command2 <- paste(command2, ",ref[]", sep="")
 command3 <- paste(command3, ",Var", as.character(ref.number), sep="")
-eval(parse(text=(paste("PUR[] <- as.integer(interaction(", command2, "))", sep="")))) 
-PUR <- ratify(PUR, filename='PUR.grd', count=TRUE, overwrite=TRUE) 
-eval(parse(text=(paste("PUR_stack <- stack(", command1, ")", sep="")))) 
-PUR_db <- crosstab(PUR_stack)
-for (h in 1:(file.number+1)) {
-  eval(parse(tex=(paste("PUR_db$Var", h, "[is.na(PUR_db$Var", h, ")]<-0", sep=""))))
+eval(parse(text=(paste("PUR<-", cmd, sep=""))))
+PUR <- ratify(PUR, filename='PUR.grd', count=TRUE, overwrite=TRUE)
+eval(parse(text=(paste("PUR_stack <- stack(", command1, ")", sep=""))))
+PUR_db<-as.data.frame(freq(PUR))
+PUR_db<-na.omit(PUR_db)
+k<-0
+PUR_db$value_temp<-PUR_db$value
+while(k < ref.number) {
+  eval(parse(text=(paste("PUR_db$Var", file.number-k, "<-PUR_db$value_temp %% 100", sep=""))))  
+  PUR_db$value_temp<-floor(PUR_db$value_temp/100)
+  k=k+1
 }
-
-eval(parse(text=(paste("PUR_db <- transform(PUR_db, unique_id=as.integer(interaction(", command3, ", drop=TRUE)))", sep="")))); 
-PUR_db <- PUR_db[ which(PUR_db$Freq > 0),] 
-eval(parse(text=(paste("PUR_db <- PUR_db[ which(PUR_db$Var", ref.number, '!="NA"),]', sep=""))))
+PUR_db$value_temp<-NULL
 
 #==CONDUCT RECONCILIATION==#
-for(i in 1:(file.number)) {
-  eval(parse(text=(paste("colnames(PUR_db)[",i,"]<-pu", i, ".name", sep=""))))
+colnames(PUR_db)[1]="unique_id"
+colnames(PUR_db)[2]="Freq"
+colnames(PUR_db)[3]=ref.name
+m<-0
+for(l in 1:file.number) {
+  var_num<-file.number+3-m
+  eval(parse(text=(paste("colnames(PUR_db)[",var_num,"]<-pu", l, ".name", sep=""))))
+  m=m+1
 }
-colnames(PUR_db)[file.number+1]<-ref.name
 colnames(lookup_ref)[2]<-ref.name
 PUR_dbmod<-merge(PUR_db,lookup_ref, by=ref.name)
 for(j in 1:(file.number)) {

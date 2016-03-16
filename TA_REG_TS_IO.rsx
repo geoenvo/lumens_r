@@ -94,6 +94,7 @@ dim<-ncol(int_con_1.m)
 int_con_1.ctot<-colSums(int_con_1.m)
 add_val_1.ctot<-colSums(add_val_1.m)
 fin_con_1<- 1/(int_con_1.ctot+add_val_1.ctot)
+fin_con_1[is.infinite(fin_con_1)]<-0
 t.input.invers.1<-diag(fin_con_1)
 A_1<-int_con_1.m %*% t.input.invers.1
 I<-as.matrix(diag(dim))
@@ -104,6 +105,7 @@ Leontief_1<-solve(I_A_1)
 int_con_2.ctot<-colSums(int_con_2.m)
 add_val_2.ctot<-colSums(add_val_2.m)
 fin_con_2<- 1/(int_con_2.ctot+add_val_2.ctot)
+fin_con_2[is.infinite(fin_con_2)]<-0
 t.input.invers.2<-diag(fin_con_2)
 A_2<-int_con_2.m %*% t.input.invers.2
 I_A_2<-I-A_2
@@ -244,6 +246,7 @@ colnames(GDP_1)[2] <- "CATEGORY"
 colnames(GDP_1)[3] <- "GDP"
 colnames(GDP_1)[4] <- "OUTPUT"
 GDP_1$GDP_PROP<-GDP_1$GDP/GDP_1$OUTPUT
+GDP_1[is.na(GDP_1)]<-0
 colnames(GDP_1)[5] <- "P_OUTPUT"
 GDP_tot_1<-as.matrix(GDP_1$GDP)
 GDP_tot_1<-colSums(GDP_tot_1)
@@ -273,6 +276,7 @@ colnames(GDP_2)[2] <- "CATEGORY"
 colnames(GDP_2)[3] <- "GDP"
 colnames(GDP_2)[4] <- "OUTPUT"
 GDP_2$GDP_PROP<-GDP_2$GDP/GDP_2$OUTPUT
+GDP_2[is.na(GDP_2)]<-0
 colnames(GDP_2)[5] <- "P_OUTPUT"
 GDP_tot_2<-as.matrix(GDP_2$GDP)
 GDP_tot_2<-colSums(GDP_tot_2)

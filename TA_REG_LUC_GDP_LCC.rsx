@@ -120,8 +120,6 @@ cat(lu_name2)
 cat("\n")
 cat(int_con_file)
 cat("\n")
-cat(int_con_file)
-cat("\n")
 cat(add_val_file)
 cat("\n")
 cat(labour_file)
@@ -167,6 +165,7 @@ dim<-ncol(int_con.m)
 int_con.ctot<-colSums(int_con.m)
 add_val.ctot<-colSums(add_val.m)
 fin_con<- 1/(int_con.ctot+add_val.ctot)
+fin_con[is.infinite(fin_con)]<-0
 t.input.invers<-diag(fin_con)
 A<-int_con.m %*% t.input.invers
 I<-as.matrix(diag(dim))
@@ -243,6 +242,7 @@ colnames(GDP)[2] <- "CATEGORY"
 colnames(GDP)[3] <- "GDP"
 colnames(GDP)[4] <- "OUTPUT"
 GDP$GDP_PROP<-GDP$GDP/GDP$OUTPUT
+GDP[is.na(GDP)]<-0
 colnames(GDP)[5] <- "P_OUTPUT"
 GDP_tot<-as.matrix(GDP$GDP)
 GDP_tot<-colSums(GDP_tot)
@@ -313,6 +313,7 @@ landuse_area_diag<-diag(as.numeric(as.matrix(landuse_area)))
 colnames(landuse_table)[1] <- "LAND_USE"
 colnames(landuse_table)[2] <- "T1_HA"
 colnames(landuse_table)[3] <- "T2_HA"
+landuse_table<-edit(landuse_table)
 landuse_table$CHANGE<-landuse_table$T2_HA-landuse_table$T1_HA
 
 #MODEL FINAL DEMAND
@@ -325,20 +326,24 @@ demand<-fin_dem.rtot+int_con.rtot
 land.requirement.coeff<-land.requirement.db$LRC
 land.productivity.coeff<-land.requirement.db$LPC
 fin_dem.scen<-land.requirement.scen/land.productivity.coeff
-fin_dem.scen[which(fin_dem.scen == "Inf") ]<-0
+fin_dem.scen[is.infinite(fin_dem.scen)]<-0
+fin_dem.scen[is.na(fin_dem.scen)]<-0
 
 #CALCULATE FINAL DEMAND AND GDP FROM SCENARIO OF LAND USE CHANGE
 fin.output.scen<-Leontief %*% fin_dem.scen
 fin.output.scen<-round(fin.output.scen, digits=1)
 colnames(fin.output.scen)[1]<-"OUTPUT_Scen"
 GDP.prop.from.output<-GDP.val/demand
+GDP.prop.from.output[is.na(GDP.prop.from.output)]<-0
 GDP.scen<-GDP.prop.from.output*fin.output.scen
 GDP.scen<-round(GDP.scen, digits=1)
+GDP.scen[is.na(GDP.scen)]<-0
 colnames(GDP.scen)[1] <- "GDP_scen"
 GDP.diff<-GDP.scen-GDP$GDP
 GDP.diff<-round(GDP.diff, digits=1)
 colnames(GDP.diff)[1] <- "GDP_diff"
 GDP.rate<-GDP.diff/GDP.val
+GDP.rate[is.na(GDP.rate)]<-0
 GDP.rate<-round(GDP.rate, digits=2)
 colnames(GDP.rate)[1] <- "GDP_rate"
 GDP_summary<-cbind(GDP,GDP.scen,fin.output.scen,GDP.diff, GDP.rate)

@@ -106,8 +106,6 @@ cat(lu_name)
 cat("\n")
 cat(int_con_file)
 cat("\n")
-cat(int_con_file)
-cat("\n")
 cat(add_val_file)
 cat("\n")
 cat(labour_file)
@@ -150,6 +148,7 @@ dim<-ncol(int_con.m)
 int_con.ctot<-colSums(int_con.m)
 add_val.ctot<-colSums(add_val.m)
 fin_con<- 1/(int_con.ctot+add_val.ctot)
+fin_con[is.infinite(fin_con)]<-0
 t.input.invers<-diag(fin_con)
 A<-int_con.m %*% t.input.invers
 I<-as.matrix(diag(dim))
@@ -169,12 +168,13 @@ colnames(GDP)[2] <- "SECTOR CLASS"
 colnames(GDP)[3] <- "GDP"
 colnames(GDP)[4] <- "OUTPUT"
 GDP$GDP_PROP<-GDP$GDP/GDP$OUTPUT
+GDP[is.na(GDP)]<-0
 order_GDP <- as.data.frame(GDP[order(-GDP$GDP),])
 order_GDP10<-head(order_GDP,n=20)
 GDP_tot<-as.matrix(GDP$GDP)
 GDP_tot<-colSums(GDP_tot)
 
-#LINK LAND DISTRIBUTION FILE WITH LAND USE MAP
+#LINK LAND SISTRIBUTION FILE WITH LAND USE MAP
 #Read land use map and calculate area of land use distribution matrix
 landuse<-ratify(landuse, filename='landuse.grd',count=TRUE,overwrite=TRUE)
 landuse_area<-as.data.frame(levels(landuse))
@@ -188,13 +188,17 @@ land.distribution.val<-land.distribution_t %*% landuse_area_diag
 land.distribution.ctot<-colSums(land.distribution.val)
 land.distribution.rtot<-rowSums(land.distribution.val)
 land.distribution.prop<-land.distribution.val %*% diag(1/land.distribution.ctot)
+land.distribution.prop[is.na(land.distribution.prop)]<-0
 land.distribution.prop.r<-t(land.distribution.val) %*% diag(1/land.distribution.rtot)
+land.distribution.prop.r[is.na(land.distribution.prop.r)]<-0
 land.requirement<-rowSums(land.distribution.val)
 fin_dem.rtot<-rowSums(fin_dem)
 int_con.rtot<-rowSums(int_con)
 demand<-fin_dem.rtot+int_con.rtot
 land.requirement.coeff<-land.requirement/demand
+land.requirement.coeff[is.infinite(land.requirement.coeff)]<-0
 land.productivity.coeff<-land.requirement/fin_dem.rtot
+land.productivity.coeff[is.infinite(land.productivity.coeff)]<-0
 
 #PRODUCE OUTPUT
 land.requirement_table<-as.data.frame(land.requirement)

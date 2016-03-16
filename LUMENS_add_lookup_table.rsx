@@ -36,30 +36,19 @@ if(file.exists(csv_file)){
 }
 write.table(list_of_data_lut, csv_file, quote=FALSE, row.names=FALSE, sep=",")
 
-#check existing rdb and rdx, then load to environment
 category<-"lookup_table"
-file_rdb<-paste(category, ".rdb", sep="")
-file_rdx<-paste(category, ".rdx", sep="")
-check_rdb<-file.exists(paste(data_dir, file_rdb, sep=""))
-check_rdx<-file.exists(paste(data_dir, file_rdx, sep=""))
-tmpEnv<-new.env(parent = emptyenv())
-if(check_rdb & check_rdx){
-  lazyLoad(category, tmpEnv)  
-} 
-#write new data to new environment
-eval(parse(text=(paste("tmpEnv$lut", lut.index, "<-lut", lut.index, sep="")))) 
-tmpEnv$list_of_data_lut<-list_of_data_lut
-ls.str(tmpEnv) 
-#make lazyLoad database
-if(check_rdb & check_rdx){
-  tools:::makeLazyLoadDB(tmpEnv, paste(category, "_temp", sep=""))
-  unlink(file_rdb)
-  unlink(file_rdx)
-  file.rename(paste(category, "_temp.rdb", sep=""), paste(category, ".rdb", sep=""))
-  file.rename(paste(category, "_temp.rdx", sep=""), paste(category, ".rdx", sep=""))
+#check existing rdata
+file_rdata<-paste(data_dir, category, sep="")
+check_rdata<-file.exists(file_rdata)
+if(check_rdata){
+  eval(parse(text=(paste("resave(lut", lut.index, ", list_of_data_lut, file=file_rdata)", sep="")))) 
 } else {
-  tools:::makeLazyLoadDB(tmpEnv, category)
+  eval(parse(text=(paste("save(lut", lut.index, ", list_of_data_lut, file=file_rdata)", sep="")))) 
 }
+resave(factor.index, file=proj.file)
+#make lazyLoad database
+e = local({load(category); environment()})
+tools:::makeLazyLoadDB(e, category)
 resave(lut.index, file=proj.file)
 
 statuscode<-1

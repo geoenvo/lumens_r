@@ -198,12 +198,8 @@ csv_file<-paste(DATA_path,"/csv_planning_unit.csv", sep="")
 eval(parse(text=(paste("list_of_data_pu<-data.frame(RST_DATA='ref', RST_NAME=names(ref), LUT_NAME='p.admin.df', row.names=NULL)", sep=""))))
 write.table(list_of_data_pu, csv_file, quote=FALSE, row.names=FALSE, sep=",")
 
-#CREATE NEW ENVIRONMENT AND RDB FOR LAZYLOAD NEEDS
-e=new.env(parent=emptyenv())
-e$list_of_data_pu<-list_of_data_pu
-e$ref<-ref
-e$p.admin.df<-p.admin.df
-tools:::makeLazyLoadDB(e, paste(DATA_path, "/planning_unit", sep=""))
+#CREATE NEW RDATA FOR PLANNING UNIT
+save(list_of_data_pu, ref, p.admin.df, file=paste(DATA_path, "/planning_unit", sep=""))
 
 setwd(DATA_path)
 

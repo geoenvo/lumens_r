@@ -70,31 +70,18 @@ if(type==0){
   }
   write.table(list_of_data_luc, csv_file, quote=FALSE, row.names=FALSE, sep=",")
   
-  #check existing rdb and rdx, then load to environment
-  file_rdb<-paste(category, ".rdb", sep="")
-  file_rdx<-paste(category, ".rdx", sep="")
-  check_rdb<-file.exists(paste(data_dir, file_rdb, sep=""))
-  check_rdx<-file.exists(paste(data_dir, file_rdx, sep=""))
-  tmpEnv<-new.env(parent = emptyenv())
-  if(check_rdb & check_rdx){
-    lazyLoad(category, tmpEnv)  
-  } 
-  #write new data to new environment
-  eval(parse(text=(paste("tmpEnv$", data_name, "_", landuse.index, "<-", data_name, "_", landuse.index, sep="")))) 
-  eval(parse(text=(paste("tmpEnv$freq", data_name, "_", landuse.index, "<-freq", data_name,"_", landuse.index, sep="" ))))
-  tmpEnv$list_of_data_luc<-list_of_data_luc
-  ls.str(tmpEnv) 
-  #make lazyLoad database
-  if(check_rdb & check_rdx){
-    tools:::makeLazyLoadDB(tmpEnv, paste(category, "_temp", sep=""))
-    unlink(file_rdb)
-    unlink(file_rdx)
-    file.rename(paste(category, "_temp.rdb", sep=""), paste(category, ".rdb", sep=""))
-    file.rename(paste(category, "_temp.rdx", sep=""), paste(category, ".rdx", sep=""))
+  #check existing rdata
+  file_rdata<-paste(data_dir, category, sep="")
+  check_rdata<-file.exists(file_rdata)
+  if(check_rdata){
+    eval(parse(text=(paste("resave(", data_name, "_", landuse.index, ", freq", data_name, "_", landuse.index, ", list_of_data_luc, file=file_rdata)", sep="")))) 
   } else {
-    tools:::makeLazyLoadDB(tmpEnv, category)
+    eval(parse(text=(paste("save(", data_name, "_", landuse.index, ", freq", data_name, "_", landuse.index, ", list_of_data_luc, file=file_rdata)", sep="")))) 
   }
   eval(parse(text=(paste("resave(landuse.index, period.index, ", period_i, ", file=proj.file)", sep=""))))
+  #make lazyLoad database
+  e = local({load(category); environment()})
+  tools:::makeLazyLoadDB(e, category)
   
   statuscode<-1
   statusmessage<-"land use/cover data has been added"
@@ -127,29 +114,19 @@ if(type==0){
   }
   write.table(list_of_data_pu, csv_file, quote=FALSE, row.names=FALSE, sep=",")
 
-  file_rdb<-paste(category, ".rdb", sep="")
-  file_rdx<-paste(category, ".rdx", sep="")
-  check_rdb<-file.exists(paste(data_dir, file_rdb, sep=""))
-  check_rdx<-file.exists(paste(data_dir, file_rdx, sep=""))
-  tmpEnv<-new.env(parent = emptyenv())
-  if(check_rdb & check_rdx){
-    lazyLoad(category, tmpEnv)  
-  } 
-  eval(parse(text=(paste("tmpEnv$", data_name, pu.index, "<-", data_name, pu.index, sep="")))) 
-  eval(parse(text=(paste("tmpEnv$lut.pu", pu.index, "<-lut.pu", pu.index, sep="" ))))
-  tmpEnv$list_of_data_pu<-list_of_data_pu
-  ls.str(tmpEnv)
-  if(check_rdb & check_rdx){
-    tools:::makeLazyLoadDB(tmpEnv, paste(category, "_temp", sep=""))
-    unlink(file_rdb)
-    unlink(file_rdx)
-    file.rename(paste(category, "_temp.rdb", sep=""), paste(category, ".rdb", sep=""))
-    file.rename(paste(category, "_temp.rdx", sep=""), paste(category, ".rdx", sep=""))
+  #check existing rdata
+  file_rdata<-paste(data_dir, category, sep="")
+  check_rdata<-file.exists(file_rdata)
+  if(check_rdata){
+    eval(parse(text=(paste("resave(", data_name, pu.index, ", lut.pu", pu.index, ", list_of_data_pu, file=file_rdata)", sep="")))) 
   } else {
-    tools:::makeLazyLoadDB(tmpEnv, category)
+    eval(parse(text=(paste("save(", data_name, pu.index, ", lut.pu", pu.index, ", list_of_data_pu, file=file_rdata)", sep="")))) 
   }
   resave(pu.index, file=proj.file)
-    
+  #make lazyLoad database
+  e = local({load(category); environment()})
+  tools:::makeLazyLoadDB(e, category)
+
   statuscode<-1
   statusmessage<-"planning unit has been added"
 } else if(type==2){
@@ -177,28 +154,19 @@ if(type==0){
   }
   write.table(list_of_data_f, csv_file, quote=FALSE, row.names=FALSE, sep=",")
 
-  file_rdb<-paste(category, ".rdb", sep="")
-  file_rdx<-paste(category, ".rdx", sep="")
-  check_rdb<-file.exists(paste(data_dir, file_rdb, sep=""))
-  check_rdx<-file.exists(paste(data_dir, file_rdx, sep=""))
-  tmpEnv<-new.env(parent = emptyenv())
-  if(check_rdb & check_rdx){
-    lazyLoad(category, tmpEnv)  
-  } 
-  eval(parse(text=(paste("tmpEnv$", data_name, factor.index, "<-", data_name, factor.index, sep="")))) 
-  tmpEnv$list_of_data_f<-list_of_data_f
-  ls.str(tmpEnv)
-  if(check_rdb & check_rdx){
-    tools:::makeLazyLoadDB(tmpEnv, paste(category, "_temp", sep=""))
-    unlink(file_rdb)
-    unlink(file_rdx)
-    file.rename(paste(category, "_temp.rdb", sep=""), paste(category, ".rdb", sep=""))
-    file.rename(paste(category, "_temp.rdx", sep=""), paste(category, ".rdx", sep=""))
+  #check existing rdata
+  file_rdata<-paste(data_dir, category, sep="")
+  check_rdata<-file.exists(file_rdata)
+  if(check_rdata){
+    eval(parse(text=(paste("resave(", data_name, factor.index, ", list_of_data_f, file=file_rdata)", sep="")))) 
   } else {
-    tools:::makeLazyLoadDB(tmpEnv, category)
+    eval(parse(text=(paste("save(", data_name, factor.index, ", list_of_data_f, file=file_rdata)", sep="")))) 
   }
   resave(factor.index, file=proj.file)
-    
+  #make lazyLoad database
+  e = local({load(category); environment()})
+  tools:::makeLazyLoadDB(e, category)
+  
   statuscode<-1
   statusmessage<-"factor data has been added!"
 }
