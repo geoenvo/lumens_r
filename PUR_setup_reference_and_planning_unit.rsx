@@ -121,10 +121,6 @@ for(i in 1:n_pu_list){
   }
 }
 
-#statuscode<-1
-#statusmessage<-"PUR database has been setup!"
-#statusoutput<-data.frame(statuscode=statuscode, statusmessage=statusmessage)
-
 #====COMBINE PLANNING UNIT FILES AND REFERENCE FILE====
 ref.number <- n_pu_list+1 
 eval(parse(text=(paste("R", ref.number, "<-ref*1", sep=""))))
@@ -232,7 +228,7 @@ test_unresolve<-nrow(database_unresolved)
 database_final<-as.data.frame(levels(PUR_rec1))
 data_attribute<-database_final[,c(1,2)]
 setwd(wd_user)
-write.csv(data_attribute, "PUR_attribute.csv", row.names=FALSE)
+write.table(data_attribute, "PUR_attribute.csv", quote=FALSE, row.names=FALSE, sep=",")
 write.dbf(data_attribute, "PUR_attribute.dbf")
 
 if (test_unresolve!=0) {
@@ -257,7 +253,7 @@ if (test_unresolve!=0) {
   colnames(dat3)[1]<-"REFERENCE"
   database_unresolved_out<-cbind(database_unresolved_out, dat3, dat2)
   database_unresolved_out<-merge(data_attribute, database_unresolved_out, by="Rec_phase1b")
-  write.csv(database_unresolved_out, "PUR_unresolved_case.csv")
+  write.table(database_unresolved_out, "PUR_unresolved_case.csv", quote=FALSE, row.names=FALSE, sep=",")
 } else {
   database_unresolved_out<-as.data.frame("There are no unresolved area in this analysis session")
   colnames(database_unresolved_out)[1]<-"Reconciliation result"
@@ -367,3 +363,7 @@ done(rtffile)
 
 command<-paste("start ", "winword ", wd_user, "/LUMENS_PUR_report_reconcile.lpr", sep="" )
 shell(command)
+
+statuscode<-1
+statusmessage<-"PUR reconciliation successfully completed!"
+statusoutput<-data.frame(statuscode=statuscode, statusmessage=statusmessage)
