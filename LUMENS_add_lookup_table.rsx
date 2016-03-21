@@ -24,7 +24,7 @@ setwd(data_dir)
 description<-str_replace_all(string=description, pattern=" ", repl=".")
 
 lut.index<-lut.index+1
-eval(parse(text=(paste("lut", lut.index, "<-read.table(attribute_table, header=TRUE, sep=",")", sep=""))))
+eval(parse(text=(paste("lut", lut.index, "<-read.table(attribute_table, header=TRUE, sep=',')", sep=""))))
 
 csv_file<-paste(dirname(proj.file),"/DATA/csv_lookup_table.csv", sep="")
 if(file.exists(csv_file)){
@@ -45,7 +45,6 @@ if(check_rdata){
 } else {
   eval(parse(text=(paste("save(lut", lut.index, ", list_of_data_lut, file=file_rdata)", sep="")))) 
 }
-resave(factor.index, file=proj.file)
 #make lazyLoad database
 e = local({load(category); environment()})
 tools:::makeLazyLoadDB(e, category)
