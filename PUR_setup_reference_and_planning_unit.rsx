@@ -6,6 +6,7 @@
 ##ref_mapping=file
 ##pu_units=file
 ##PUR_rec1=output raster
+##data_attribute=output table
 ##database_unresolved_out=output table
 ##statusoutput=output table
 

@@ -1,6 +1,7 @@
 ##[PUR]=group
 ##recon_file=vector
-##unresolved_table=file
+##unresolved_table=string
+##statusoutput=output table
 
 library(grid)
 library(gridExtra)
@@ -9,8 +10,6 @@ library(ggplot2)
 library(RColorBrewer)
 library(rtf)
 library(foreign)
-
-recon_file=readOGR("C:/Users/ANugraha/Documents/LUMENS/D_Development/SourceCode/lumens/output/paser_tes/PUR/PUR_analysis_1", "PUR_reconciliation_result")
 
 #Read LUMENS log file
 user_temp_folder<-Sys.getenv("TEMP")
@@ -166,3 +165,7 @@ write.table(summary_PUR, "PUR_final_lookup_table.csv", quote=FALSE, row.names=FA
 
 command<-paste("start ", "winword ", working_directory, "/LUMENS_PUR_FINAL_report.lpr", sep="" )
 shell(command)
+
+statuscode<-1
+statusmessage<-"PUR final reconciliation successfully completed!"
+statusoutput<-data.frame(statuscode=statuscode, statusmessage=statusmessage)
