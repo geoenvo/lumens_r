@@ -121,7 +121,7 @@ colnames(cov.desc)[2]<-"Description"
 
 #ATTRIBUTE OF ADMIN
 p.admin.df<-read.table(dissolve_table, header=TRUE, sep=",")
-colnames(p.admin.df)[1]="ADMIN_UNIT"
+colnames(p.admin.df)[2]="ADMIN_UNIT"
 
 myColors1 <- brewer.pal(9,"Set1")
 myColors2 <- brewer.pal(8,"Accent")
