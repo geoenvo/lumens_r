@@ -119,7 +119,7 @@ if(type==0){
   })
   
   attribute_table<-read.table(attribute_table, sep=",")
-  colnames(attribute_table)<-c(attribute_field_id, "ID")
+  colnames(attribute_table)<-c("ID", attribute_field_id)
   #null kolom ketiga
   eval(parse(text=(paste("lut.pu", pu.index, "<-attribute_table",  sep=""))))
   #merge(?)

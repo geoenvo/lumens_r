@@ -17,7 +17,9 @@ admin_df<-as.data.frame(unique(admin_df[,1]))
 colnames(admin_df)=field_attribute
 
 #add new field
-admin_df$IDADM<-1:nrow(admin_df)
+seq<-1:nrow(admin_df)
+admin_df<-cbind(seq, admin_df)
+colnames(admin_df)[1]<-"IDADM"
 
 #merge LUT into polygon
 eval(parse(text=(paste("admin_data@data$", field_attribute, "<-as.character(admin_data@data$", field_attribute, ")", sep=""))))
