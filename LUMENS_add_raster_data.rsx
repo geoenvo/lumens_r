@@ -56,7 +56,7 @@ if(type==0){
   
   #create attribute table
   attribute_table<-read.table(attribute_table, sep=",")
-  colnames(attribute_table)<-c("ID", "Legend", "Classified")
+  colnames(attribute_table)<-c("ID", "COUNT", "Legend", "Classified")
   eval(parse(text=(paste("freq", data_name, "_", landuse.index, "<-attribute_table",  sep=""))))
   
   #write raster detail to csv
@@ -101,7 +101,7 @@ if(type==0){
   })
   
   attribute_table<-read.table(attribute_table, sep=",")
-  colnames(attribute_table)<-c("ID", "Legend")
+  colnames(attribute_table)<-c("ID", "COUNT", "Legend")
   eval(parse(text=(paste("lut.pu", pu.index, "<-attribute_table",  sep=""))))
   
   csv_file<-paste(dirname(proj.file),"/DATA/csv_", category, ".csv", sep="")

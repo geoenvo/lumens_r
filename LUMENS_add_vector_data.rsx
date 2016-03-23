@@ -70,12 +70,13 @@ if(type==0){
   })
   
   attribute_table<-read.table(attribute_table, sep=",")
-  colnames(attribute_table)<-c("Legend", "Classified")
+  colnames(attribute_table)<-c("ID", "Old_Legend", "Legend", "Classified")
+  eval(parse(text=(paste("freqR<-na.omit(as.data.frame(freq(", data_name, "_", landuse.index, ")))", sep=""))))
+  colnames(freqR)<-c("ID", "COUNT")
+  attribute_table<-merge(attribute_table, freqR, by="ID")
+  attribute_table<-subset(attribute_table, select=c('ID', 'COUNT', 'Legend', 'Classified'))
   eval(parse(text=(paste("freq", data_name, "_", landuse.index, "<-attribute_table",  sep=""))))
-  #merge with existing freqTable (?)
-  #Does it still need to be merged? Worth trying..
-  #eval(parse(text=(paste("attribute_table<-as.data.frame(na.omit(freq(", data_name,"_", landuse.index, ")))",  sep=""))))
-  
+
   #write raster detail to csv
   csv_file<-paste(dirname(proj.file),"/DATA/csv_", category, ".csv", sep="")
   if(file.exists(csv_file)){

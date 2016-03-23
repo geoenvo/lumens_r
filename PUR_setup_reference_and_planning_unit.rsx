@@ -2,9 +2,9 @@
 ##ref_data=vector
 ##Field=field ref_data
 ##data_name=string
-##ref_class=file
-##ref_mapping=file
-##pu_units=file
+##ref_class=string
+##ref_mapping=string
+##pu_units=string
 ##PUR_rec1=output raster
 ##data_attribute=output table
 ##database_unresolved_out=output table
@@ -110,6 +110,7 @@ for(i in 1:n_pu_list){
   get_from_rdb(symbol=paste(lut_data), filebase=paste(data_dir, "planning_unit", sep=""))
 
   central_attr<-append(central_attr, data_name)
+  eval(parse(text=(paste(pu_data, "<-spatial_sync_raster(", pu_data, ',ref, method = "ngb")', sep=""))))
   eval(parse(text=(paste(pu_data, "[is.na(", pu_data, ")]<-0", sep="")))) 
   
   j=n_pu_list+1-i
@@ -150,8 +151,9 @@ colnames(PUR_db)[2]="Freq"
 colnames(PUR_db)[3]=ref.name
 m<-0
 for(l in 1:n_pu_list) {
+  pu_data<-as.character(pu_list[l,2])
   var_num<-n_pu_list+3-m
-  eval(parse(text=(paste("colnames(PUR_db)[",var_num,"]<-names(pu_pu", l, ")", sep=""))))
+  eval(parse(text=(paste("colnames(PUR_db)[",var_num,"]<-names(", pu_data, ")", sep=""))))
   m=m+1
 }
 colnames(lookup_ref)[3]<-ref.name
@@ -236,11 +238,12 @@ write.dbf(data_attribute, "PUR_attribute.dbf")
 if (test_unresolve!=0) {
   len <- nrow(database_unresolved)
   for(r in 1:n_pu_list){
+    pu_data<-as.character(pu_list[r,2])
     eval(parse(text=(paste("database_unresolved$PU_", r, '<-"NULL"', sep=""))))
     word1<-paste("cek", r, sep="")
     word2<-paste("PU_", r, sep="")
     for(s in 1:len){
-      eval(parse(text=(paste("if((database_unresolved$", word1, "[", s, "])>0){database_unresolved$", word2, "[", s, "]<-names(pu_pu", r, ")} else {database_unresolved$", word2, "[", s, ']<-"-"}', sep=""))))
+      eval(parse(text=(paste("if((database_unresolved$", word1, "[", s, "])>0){database_unresolved$", word2, "[", s, "]<-names(", pu_data, ")} else {database_unresolved$", word2, "[", s, ']<-"-"}', sep=""))))
     }
   }
   
