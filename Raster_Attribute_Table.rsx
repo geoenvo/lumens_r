@@ -1,5 +1,5 @@
-##[QUES]=group
-##raster_file=raster
+##[LUMENS]=group
+##raster_file=file
 ##rat=output table
 ##passfilenames
 
@@ -9,11 +9,9 @@ r<-raster(raster_file)
 raster_dbf<-paste(raster_file, ".vat.dbf", sep="")
 if(file.exists(raster_dbf)){
 raster_dbf<-read.dbf(raster_dbf)
-#edit(raster_dbf)
-rat<-raster_dbf
+rat<-edit(raster_dbf)
 } else {
 area<-as.data.frame(freq(r))
-#edit(area)
-rat<-raster_dbf
+rat<-edit(area)
 }
 

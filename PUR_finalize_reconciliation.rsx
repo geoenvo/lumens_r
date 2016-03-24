@@ -34,13 +34,13 @@ attribute<-paste(working_directory, "/PUR_attribute.csv", sep="")
 attribute<- read.table(attribute, header=TRUE, sep=",")
 unresolved_edit<- read.table(unresolved_table, header=TRUE, sep=",")
 unresolved_edit.c1<-as.data.frame(unresolved_edit$ID) 
-unresolved_edit.c2<-as.data.frame(unresolved_edit$resolved)
+unresolved_edit.c2<-as.data.frame(unresolved_edit$Reconcile.Action)
 colnames(unresolved_edit.c1)[1]<-"ID"
 colnames(unresolved_edit.c2)[1]<-"resolved"
 unresolved_edit.join<-cbind(unresolved_edit.c1,unresolved_edit.c2)
 attribute.edit<-merge(attribute,unresolved_edit.join, by="ID", all=TRUE)
 
-test<-as.data.frame(unique(unresolved_edit$resolved))
+test<-as.data.frame(unique(unresolved_edit$Reconcile.Action))
 test2<-as.data.frame(unique(attribute$Rec_phase1b))
 colnames(test)[1]<-"add"
 colnames(test2)[1]<-"add"
