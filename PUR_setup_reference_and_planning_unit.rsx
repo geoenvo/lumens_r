@@ -36,7 +36,7 @@ load(proj.file)
 
 #SET PATH OF DATA DIRECTORY 
 data_dir<-paste(dirname(proj.file), "/DATA/", sep="")
-setwd(data_dir)
+#setwd(data_dir)
 
 time_start<-paste(eval(parse(text=(paste("Sys.time ()")))), sep="")
 
@@ -123,36 +123,47 @@ for(i in 1:n_pu_list){
     command1<-paste(command1, pu_data, sep="")
   }
 }
-
-#====COMBINE PLANNING UNIT FILES AND REFERENCE FILE====
 ref.number <- n_pu_list+1 
 eval(parse(text=(paste("R", ref.number, "<-ref*1", sep=""))))
 cmd<-paste(cmd,"R", ref.number, sep="")
 
+#====COMBINE PLANNING UNIT FILES AND REFERENCE FILE====
+#Stacking planning unit
 command1 <- paste(command1, ",ref", sep="") 
 eval(parse(text=(paste("PUR_stack <- stack(", command1, ")", sep="")))) 
 
+#Create raster attribute table from combined planning unit
 eval(parse(text=(paste("PUR<-", cmd, sep=""))))
-PUR <- ratify(PUR, filename='PUR.grd', count=TRUE, overwrite=TRUE)
-PUR_db<-as.data.frame(freq(PUR))
-PUR_db<-na.omit(PUR_db)
+PUR <- ratify(PUR, count=TRUE)
+PUR_db<-levels(PUR)[[1]]
+
+#Reclassify attribute ID
+ORI_ID<-PUR_db$ID
+NEW_ID<-seq(nrow(PUR_db)) # <== new ids come from sequence of original ids
+rclmat<-cbind(as.matrix(ORI_ID), as.matrix(NEW_ID)) # <== create reclassify matrix(ORI_ID, NEW_ID)
+PUR<-reclassify(PUR, rclmat) # <== reclass raster
+PUR<-ratify(PUR, count=TRUE)
+
+#Extract all ids
+PUR_db$NEW_ID<-NEW_ID
+PUR_db$TEMP_ID<-PUR_db[,1]
 k<-0
-PUR_db$value_temp<-PUR_db$value
 while(k < ref.number) {
-  eval(parse(text=(paste("PUR_db$Var", n_pu_list-k, "<-PUR_db$value_temp %% 100", sep=""))))  
-  PUR_db$value_temp<-floor(PUR_db$value_temp/100)
+  eval(parse(text=(paste("PUR_db$Var", n_pu_list-k, "<-PUR_db$TEMP_ID %% 100", sep=""))))  
+  PUR_db$TEMP_ID<-floor(PUR_db$TEMP_ID/100)
   k=k+1
 }
-PUR_db$value_temp<-NULL
+PUR_db$TEMP_ID<-NULL
 
-#==CONDUCT RECONCILIATION==#
+#====CONDUCT RECONCILIATION====#
 colnames(PUR_db)[1]="unique_id"
 colnames(PUR_db)[2]="Freq"
-colnames(PUR_db)[3]=ref.name
+#colnames(PUR_db)[3]="NEW_ID"
+colnames(PUR_db)[4]=ref.name
 m<-0
 for(l in 1:n_pu_list) {
   pu_data<-as.character(pu_list[l,2])
-  var_num<-n_pu_list+3-m
+  var_num<-n_pu_list+4-m
   eval(parse(text=(paste("colnames(PUR_db)[",var_num,"]<-names(", pu_data, ")", sep=""))))
   m=m+1
 }
@@ -163,6 +174,9 @@ for(j in 1:(n_pu_list)) {
   eval(parse(text=(paste("PUR_dbmod<-within(PUR_dbmod,{cek", j, "<-as.numeric(", data_name, "==IDS)})",sep=""))))
 }
 
+#Check planning unit which is overlapped refer to reference data 
+#   if there is no overlapping data then attribute equals to reference,
+#   else attribute would become unresolved
 command4<-paste()
 for (p in 1:n_pu_list) {
   if (p!=n_pu_list) {
@@ -174,6 +188,7 @@ for (p in 1:n_pu_list) {
 PUR_dbmod<-within(PUR_dbmod, {reconcile1<-eval(parse(text=(command4)))})
 PUR_dbmod<-within(PUR_dbmod, {reconcile_attr<-ifelse(reconcile1==0,as.character(REFERENCE), "unresolved")})
 
+#Put an ID in overlapped/reconcile attribute 
 command5<-paste()
 for (r in 1:n_pu_list) {
   if (r!=n_pu_list) {
@@ -185,6 +200,7 @@ for (r in 1:n_pu_list) {
 }
 PUR_dbmod<-within(PUR_dbmod, {reconcile_attr2<-ifelse(reconcile1==1, reconcile_attr2<-eval(parse(text=(command5))),100)})
 
+#Create central attribute of planning units
 central_attr<-as.data.frame(central_attr)
 numb_ca<-nrow(central_attr)
 numb_ca<-as.data.frame(seq(numb_ca))
@@ -199,6 +215,7 @@ colnames(add_22)[1]="Rec_phase1"
 colnames(add_22)[2]="reconcile_attr2"
 central_attrmod<-rbind(central_attrmod, add_22)
 
+#Change reconcile attribute into a unique one
 PUR_dbfinal<-merge(PUR_dbmod,central_attrmod, by='reconcile_attr2')
 PUR_dbfinal<-within(PUR_dbfinal, {
   Rec_phase1<-ifelse(Rec_phase1=="none", as.character(reconcile_attr), as.character(Rec_phase1))})
@@ -212,18 +229,18 @@ for(s in 1:len){
   }
 }
 
-PUR_dbfinal2<-PUR_dbfinal[,c('unique_id','Rec_phase1b')]
+PUR_dbfinal2<-PUR_dbfinal[,c('NEW_ID','Rec_phase1b')]
 colnames(PUR_dbfinal2)[1]= "ID"
 test1<-unique(PUR_dbfinal2)[1]
 test2<-unique(PUR_dbfinal2)[2]
 test3<-cbind(test1,test2)
-levels(PUR)<-merge((levels(PUR)),test3,by="ID"); #output shapefile
+levels(PUR)<-merge((levels(PUR)),test3,by="ID") #output shapefile
 PUR_rec1 <- deratify(PUR,'Rec_phase1b')
 PUR_rec2<-ratify(PUR_rec1, filename='PUR_rec1.grd',count=TRUE,overwrite=TRUE) #cuma untuk di merge aja
 levels(PUR_rec1)<-merge((levels(PUR_rec1)),levels(PUR_rec2),by="ID")
 PUR_rec3<-stack(PUR, PUR_rec1)
-setwd(wd_user)
 writeRaster(PUR_rec1, filename="PUR_reconciliation_result", format="GTiff", overwrite=TRUE)
+write.dbf(PUR_dbfinal, "PUR_database_final.dbf")
 
 #DATABASE HANDLING
 database_final<-PUR_dbfinal
@@ -231,7 +248,6 @@ database_unresolved<-subset(PUR_dbfinal, Rec_phase1 == "unresolved")
 test_unresolve<-nrow(database_unresolved)
 database_final<-as.data.frame(levels(PUR_rec1))
 data_attribute<-database_final[,c(1,2)]
-setwd(wd_user)
 write.table(data_attribute, "PUR_attribute.csv", quote=FALSE, row.names=FALSE, sep=",")
 write.dbf(data_attribute, "PUR_attribute.dbf")
 

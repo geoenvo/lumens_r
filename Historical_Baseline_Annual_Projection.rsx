@@ -44,11 +44,11 @@ if(QUESC_list_n<2){
 
 repeat{
   QUESC_list<-edit(QUESC_list)
-  if(sum(QUESC_list$Usage)>2){
+  if(sum(QUESC_list$Usage)>1){
     break
   } else {
     msgBox <- tkmessageBox(title = "Annual projection",
-                           message = "Choose at least three QUES-C database. Retry?",
+                           message = "Choose at least two QUES-C database. Retry?",
                            icon = "question", 
                            type = "retrycancel", default="retry")
     if(as.character(msgBox)=="cancel"){
