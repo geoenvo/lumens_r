@@ -1,7 +1,15 @@
-##[QUES]=group
-##Look_up_table=file
+##Alpha - QUES=group
+##landuse_1=string
+##landuse_2=string
+##planning_unit=string
+##lookup_c=string
 ##raster.nodata=number 0
-##passfilenames
+
+landuse_1="LC1990"
+landuse_2="LC2000"
+planning_unit="PUR_final_reconciliation"
+lookup_c="carbon"
+raster.nodata=0
 
 library(tiff)
 library(foreign)
@@ -17,7 +25,11 @@ library(spatial.tools)
 library(rtf)
 
 time_start<-paste(eval(parse(text=(paste("Sys.time ()")))), sep="")
-lut.c<-read.table(Look_up_table, header=TRUE, sep=",",)
+
+#CREATE FUNCTION TO GET OBJECT FROM RDB
+get_from_rdb <- function(symbol, filebase, envir =parent.frame()){
+  lazyLoad(filebase = filebase, envir = envir, filter = function(x) x == symbol)
+}
 
 #READ LUMENS LOG FILE
 user_temp_folder<-Sys.getenv("TEMP")
@@ -31,372 +43,268 @@ log.file<-read.table(LUMENS_path_user, header=FALSE, sep=",")
 proj.file<-paste(log.file[1,1], "/", log.file[1,2],"/",log.file[1,2], ".lpj", sep="")
 load(proj.file)
 
-#====READ LANDUSE DATA FROM LUMENS DATABASE====
-per<-as.data.frame(ls(pattern="freq"))
-n<-nrow(per)
-if(n==0){
-  msgBox <- tkmessageBox(title = "QUES-C",
-                         message = "No Land Use/Cover found",
-                         icon = "info",
-                         type = "ok")
-  quit()
-}
-data<-per
-data.y<-NULL
-for (q in 1:n) {
-  data.x<-substr(as.character(factor(data[q,1])), 5, 14)
-  data.y<-c(data.y,data.x)
-  
-}
-data<-as.data.frame(data.y)
+#SET PATH OF DATA DIRECTORY 
+data_dir<-paste(dirname(proj.file), "/DATA/", sep="")
+#setwd(data_dir)
 
-n<-nrow(data)
-command1<-NULL
-command2<-NULL
-for(i in 1:n) {
-  if (i!=n){
-    command1<-paste(command1,"period", i, ",", sep="")
-    command2<-paste(command2,"landuse_t", i, ",", sep="")
-  } else {
-    command1<-paste(command1,"period", i, sep="")
-    command2<-paste(command2,"landuse_t", i, sep="")
-  }
-}
+get_from_rdb(symbol=paste("list_of_data_luc"), filebase=paste(data_dir, "land_use_cover", sep=""))
+get_from_rdb(symbol=paste("list_of_data_pu"), filebase=paste(data_dir, "planning_unit", sep=""))
+get_from_rdb(symbol=paste("list_of_data_lut"), filebase=paste(data_dir, "lookup_table", sep=""))
 
-#===Check LUMENS QUES-C log file====
-if (file.exists(paste(user_temp_folder,"/LUMENS/LUMENS_quesc.log", sep=""))) {
-  log.quesc<-read.table(paste(user_temp_folder,"/LUMENS/LUMENS_quesc.log", sep=""), sep=",", header=T, row.names=1)
-  print("LUMENS QUES-C log file is available")
-} else {
-  log.quesc<-data.frame(IDX=NA, 
-                        MODULE=NA, 
-                        DATE=NA,
-                        TIME=NA,
-                        LU1=NA,
-                        LU2=NA,
-                        PU=NA,
-                        T1=NA,
-                        T2=NA,
-                        LOOKUP_LC=NA,
-                        LOOKUP_C=NA,
-                        LOOKUP_ZONE=NA,
-                        NODATA=NA,
-                        OUTPUT_FOLDER=NA, row.names=NULL)
-}
+data_luc1<-list_of_data_luc[which(list_of_data_luc$RST_NAME==landuse_1),]
+data_luc2<-list_of_data_luc[which(list_of_data_luc$RST_NAME==landuse_2),]
+data_pu<-list_of_data_pu[which(list_of_data_pu$RST_NAME==planning_unit),]
+data_lut<-list_of_data_lut[which(list_of_data_lut$TBL_NAME==lookup_c),]
 
-data2<-as.data.frame(as.character(ls(pattern="pu_pu")))
-n_pu<-nrow(data2)
-if (n_pu==0) {
-  msgBox <- tkmessageBox(title = "QUES-C",
-                         message = "No planning unit found. Do you want to use administrative boundary as planning unit?",
-                         icon = "question", 
-                         type = "yesno", default="yes")
-  if(as.character(msgBox)=="no"){
-    quit()
-  }
-  ref[ref==0]<-NA
-  lut.pu<-p.admin.df[2]
-  lut.pu[2]<-p.admin.df[1]
-  pu<-"ref"
-} else {
-  command3<-NULL
-  for(i in 1:n_pu) {
-    if (i!=n_pu){
-      command3a<-eval(parse(text=(paste( "names(pu_pu", i, ")", sep=""))))
-      command3<-c(command3,command3a)
-    } else {
-      command3a<-eval(parse(text=(paste( "names(pu_pu", i, ")", sep=""))))
-      command3<-c(command3,command3a)
-    }
-  }
-}
+T1<-data_luc1$PERIOD
+T2<-data_luc2$PERIOD
 
-rr<-nrow(per)
-command4<-NULL
-for(i in 1:rr) {
-  if (i!=rr){
-    command4<-paste(command4,"freqLanduse_", i, ",", sep="")
-  } else {
-    command4<-paste(command4,"freqLanduse_", i, sep="")
-  }
-}
-
-#====SELECT DATA TO BE ANALYZED====
-eval(parse(text=(paste("year<-c(", command1, ")", sep=""))))
-data<-as.data.frame(cbind(data,year))
-data$t1<-0
-data$t2<-0
-colnames(data)[1]<-"data"
-data$data<-as.character(data$data)
-data3<-data
-a<-nrow(data3)
-repeat{
-  data_temp<-edit(data)
-  if(sum(data_temp$t1)==1 & sum(data_temp$t2)==1){
-    data_temp$sum<-data_temp$t1+data_temp$t2
-    data_temp <- data_temp[which(data_temp$sum==1),]
-    n_temp<-nrow(data_temp)
-    if(n_temp!=0) {
-      data<-data_temp
-      break  
-    }
-  } else {
-    msgBox <- tkmessageBox(title = "Pre-QUES",
-                           message = "Choose data to be analyzed. Retry?",
-                           icon = "question", 
-                           type = "retrycancel", default="retry")
-    if(as.character(msgBox)=="cancel"){
-      quit()
-    }
-  }
-}
-
-data$t1<-NULL
-data$t2<-NULL
-data$sum<-NULL
-
-n<-nrow(data)
-command1<-NULL
-T1<-data[1,2]
-T2<-data[2,2]
-
-#====SELECT PLANNING UNIT TO BE ANALYZED====
-if(n_pu!=0){
-  data2<-as.data.frame(cbind(data2,command3))
-  data2$usage<-0
-  colnames(data2)[1]<-"data"
-  colnames(data2)[2]<-"sources"
-  data2$data<-as.character(data2$data)
-  data2$sources<-as.character(data2$sources)
-  data2<-rbind(data2, c("ref", "Administrative", 0))
-  data2$usage<-as.integer(data2$usage)  
-  repeat{
-    data2<-edit(data2)
-    if(sum(data2$usage)==1){
-      break
-    } else {
-      msgBox <- tkmessageBox(title = "Pre-QUES",
-                             message = "Choose one data as a planning unit. Retry?",
-                             icon = "question", 
-                             type = "retrycancel", default="retry")
-      if(as.character(msgBox)=="cancel"){
-        quit()
-      }
-    }
-  } 
-  data2 <- data2[which(data2$usage==1),]
-  data2$usage<-NULL
-  pu<-as.character(data2[1,1])
-  if(pu=="ref"){
-    ref[ref==0]<-NA
-    lut.pu<-p.admin.df[2]
-    lut.pu[2]<-p.admin.df[1]
-    pu_selected<-0
-  } else {
-    pu_selected<-substr(pu, 6, 7)
-    eval(parse(text=(paste("lut.pu<-lut.pu", pu_selected, sep=""))))
-  }
-}
+#==Check LUMENS QUES-C log file===
+# if (file.exists(paste(user_temp_folder,"/LUMENS/LUMENS_quesc.log", sep=""))) {
+#   log.quesc<-read.table(paste(user_temp_folder,"/LUMENS/LUMENS_quesc.log", sep=""), sep=",", header=T, row.names=1)
+#   print("LUMENS QUES-C log file is available")
+# } else {
+#   log.quesc<-data.frame(IDX=NA, 
+#                         MODULE=NA, 
+#                         DATE=NA,
+#                         TIME=NA,
+#                         LU1=NA,
+#                         LU2=NA,
+#                         PU=NA,
+#                         T1=NA,
+#                         T2=NA,
+#                         LOOKUP_LC=NA,
+#                         LOOKUP_C=NA,
+#                         LOOKUP_ZONE=NA,
+#                         NODATA=NA,
+#                         OUTPUT_FOLDER=NA, row.names=NULL)
+# }
 
 #====CREATE RUNNING RECORD====
-check_record <- paste(T1, T2, pu_selected, sep="")
-if(exists("run_record")){
-  rec_selected <- run_record[which(run_record$rec==check_record & run_record$modul=="QUESC"),]
-  n_rec <- nrow(rec_selected)
-  if(n_rec==0){
-    new_rec <- data.frame(check_record, T1, T2, pu_selected, "QUESC")
-    colnames(new_rec)[1] <- "rec"
-    colnames(new_rec)[2] <- "T1"
-    colnames(new_rec)[3] <- "T2"
-    colnames(new_rec)[4] <- "pu_selected"    
-    colnames(new_rec)[5] <- "modul"    
-    run_record <- rbind(run_record, new_rec)
-  } else {
-    #print all existing element (rtf, dbf, carbon1, carbon2, sequestration, emission)
-    QUESC.index<-QUESC.index+1
-    eval(parse(text=(paste("pu_name<-names(",pu[1],")", sep=''))))
-    eval(parse(text=(paste("landuse1<-", data[1,1], sep=""))))
-    eval(parse(text=(paste("landuse2<-", data[2,1], sep=""))))
-    lookup_c<- read.table(Look_up_table, header=TRUE, sep=",",)
-    
-    dirQUESC<-paste(dirname(proj.file), "/QUES/QUES-C/QUESC_analysis_",pu_name,"_",data[1,2],"_",data[2,2], "_", QUESC.index, sep="")
-    dir.create(dirQUESC, mode="0777")
-    setwd(dirQUESC) 
-    
-    eval(parse(text=(paste("done(rtffileQUESC_", rec_selected$rec, ")", sep=""))))
-    
-    NAvalue(landuse1)<-raster.nodata
-    NAvalue(landuse2)<-raster.nodata
-    rcl.m.c1<-as.matrix(lookup_c[,1])
-    rcl.m.c2<-as.matrix(lookup_c[,3])
-    rcl.m<-cbind(rcl.m.c1,rcl.m.c2)
-    carbon1<-reclassify(landuse1, rcl.m)
-    carbon2<-reclassify(landuse2, rcl.m)
-    chk_em<-carbon1>carbon2
-    chk_sq<-carbon1<carbon2
-    emission<-((carbon1-carbon2)*3.67)*chk_em
-    sequestration<-((carbon2-carbon1)*3.67)*chk_sq
-    
-    writeRaster(carbon1, filename="carbon1.tif", format="GTiff", overwrite=TRUE)
-    writeRaster(carbon2, filename="carbon2.tif", format="GTiff", overwrite=TRUE)
-    writeRaster(emission, filename="emission.tif", format="GTiff", overwrite=TRUE)
-    writeRaster(sequestration, filename="sequestration.tif", format="GTiff", overwrite=TRUE)
-    qmlcarbon1<-paste(dirQUESC, "/carbon1.qml", sep="")
-    qmlcarbon2<-paste(dirQUESC, "/carbon2.qml", sep="")
-    qmlemisi<-paste(dirQUESC, "/emission.qml", sep="")
-    qmlseq<-paste(dirQUESC, "/sequestration.qml", sep="")
-    
-    sink(qmlcarbon1)
-    cat("<!DOCTYPE qgis PUBLIC 'http://mrcc.com/qgis.dtd' 'SYSTEM'>")
-    cat('<qgis version="2.0.0-Taoge" minimumScale="0" maximumScale="1e+08" hasScaleBasedVisibilityFlag="0">')
-    cat('  <pipe>')
-    cat('    <rasterrenderer opacity="1" alphaBand="-1" classificationMax="296.703" classificationMinMaxOrigin="CumulativeCutFullExtentEstimated" band="1" classificationMin="0.297" type="singlebandpseudocolor">')
-    cat('      <rasterTransparency/>')
-    cat('      <rastershader>')
-    cat('        <colorrampshader colorRampType="INTERPOLATED" clip="0">')
-    cat('          <item alpha="255" value="5" label="0-5" color="#f7fcf5"/>')
-    cat('          <item alpha="255" value="5" label="0-5" color="#f7fcf5"/>')
-    cat('          <item alpha="255" value="25" label="10-25" color="#bfe5b8"/>')
-    cat('          <item alpha="255" value="50" label="25-50" color="#93d290"/>')
-    cat('          <item alpha="255" value="100" label="50-100" color="#5fba6c"/>')
-    cat('          <item alpha="255" value="200" label="100-200" color="#329b51"/>')
-    cat('          <item alpha="255" value="300" label="200-300" color="#0c7734"/>')
-    cat('          <item alpha="255" value="400" label="300-400" color="#00441b"/>')
-    cat('        </colorrampshader>')
-    cat('      </rastershader>')
-    cat('    </rasterrenderer>')
-    cat('    <brightnesscontrast brightness="0" contrast="0"/>')
-    cat('    <huesaturation colorizeGreen="128" colorizeOn="0" colorizeRed="255" colorizeBlue="128" grayscaleMode="0" saturation="0" colorizeStrength="100"/>')
-    cat('    <rasterresampler maxOversampling="2"/>')
-    cat('  </pipe>')
-    cat('  <blendMode>0</blendMode>')
-    cat('</qgis>')
-    sink()
-    
-    sink(qmlcarbon2)
-    cat("<!DOCTYPE qgis PUBLIC 'http://mrcc.com/qgis.dtd' 'SYSTEM'>")
-    cat('<qgis version="2.0.0-Taoge" minimumScale="0" maximumScale="1e+08" hasScaleBasedVisibilityFlag="0">')
-    cat('  <pipe>')
-    cat('    <rasterrenderer opacity="1" alphaBand="-1" classificationMax="296.703" classificationMinMaxOrigin="CumulativeCutFullExtentEstimated" band="1" classificationMin="0.297" type="singlebandpseudocolor">')
-    cat('      <rasterTransparency/>')
-    cat('      <rastershader>')
-    cat('        <colorrampshader colorRampType="INTERPOLATED" clip="0">')
-    cat('          <item alpha="255" value="5" label="0-5" color="#f7fcf5"/>')
-    cat('          <item alpha="255" value="5" label="0-5" color="#f7fcf5"/>')
-    cat('          <item alpha="255" value="25" label="10-25" color="#bfe5b8"/>')
-    cat('          <item alpha="255" value="50" label="25-50" color="#93d290"/>')
-    cat('          <item alpha="255" value="100" label="50-100" color="#5fba6c"/>')
-    cat('          <item alpha="255" value="200" label="100-200" color="#329b51"/>')
-    cat('          <item alpha="255" value="300" label="200-300" color="#0c7734"/>')
-    cat('          <item alpha="255" value="400" label="300-400" color="#00441b"/>')
-    cat('        </colorrampshader>')
-    cat('      </rastershader>')
-    cat('    </rasterrenderer>')
-    cat('    <brightnesscontrast brightness="0" contrast="0"/>')
-    cat('    <huesaturation colorizeGreen="128" colorizeOn="0" colorizeRed="255" colorizeBlue="128" grayscaleMode="0" saturation="0" colorizeStrength="100"/>')
-    cat('    <rasterresampler maxOversampling="2"/>')
-    cat('  </pipe>')
-    cat('  <blendMode>0</blendMode>')
-    cat('</qgis>')
-    sink()
-    
-    sink(qmlemisi)
-    cat("<!DOCTYPE qgis PUBLIC 'http://mrcc.com/qgis.dtd' 'SYSTEM'>")
-    cat('<qgis version="2.0.0-Taoge" minimumScale="0" maximumScale="1e+08" hasScaleBasedVisibilityFlag="0">')
-    cat('<pipe>')
-    cat('<rasterrenderer opacity="1" alphaBand="-1" classificationMax="262.787" classificationMinMaxOrigin="CumulativeCutFullExtentEstimated" band="1" classificationMin="0" type="singlebandpseudocolor">')
-    cat('<rasterTransparency/>')
-    cat('<rastershader>')
-    cat('<colorrampshader colorRampType="INTERPOLATED" clip="0">')
-    cat('<item alpha="255" value="0" label="0.000000" color="#fff5f0"/>')
-    cat('<item alpha="255" value="34.1623" label="34.162310" color="#fee0d3"/>')
-    cat('<item alpha="255" value="68.3246" label="68.324620" color="#fcbda4"/>')
-    cat('<item alpha="255" value="102.487" label="102.486930" color="#fc9677"/>')
-    cat('<item alpha="255" value="136.649" label="136.649240" color="#fb7050"/>')
-    cat('<item alpha="255" value="170.812" label="170.811550" color="#f14431"/>')
-    cat('<item alpha="255" value="204.974" label="204.973860" color="#d32020"/>')
-    cat('<item alpha="255" value="236.508" label="236.508300" color="#ac1016"/>')
-    cat('<item alpha="255" value="262.787" label="262.787000" color="#67000d"/>')
-    cat('</colorrampshader>')
-    cat('</rastershader>')
-    cat('</rasterrenderer>')
-    cat('<brightnesscontrast brightness="0" contrast="0"/>')
-    cat('<huesaturation colorizeGreen="128" colorizeOn="0" colorizeRed="255" colorizeBlue="128" grayscaleMode="0" saturation="0" colorizeStrength="100"/>')
-    cat('<rasterresampler maxOversampling="2"/>')
-    cat('</pipe>')
-    cat('<blendMode>0</blendMode>')
-    cat('</qgis>')
-    sink()
-    
-    sink(qmlseq)
-    cat("<!DOCTYPE qgis PUBLIC 'http://mrcc.com/qgis.dtd' 'SYSTEM'>")
-    cat('<qgis version="2.0.0-Taoge" minimumScale="0" maximumScale="1e+08" hasScaleBasedVisibilityFlag="0">')
-    cat('<pipe>')
-    cat('<rasterrenderer opacity="1" alphaBand="-1" classificationMax="262.787" classificationMinMaxOrigin="CumulativeCutFullExtentEstimated" band="1" classificationMin="0" type="singlebandpseudocolor">')
-    cat('<rasterTransparency/>')
-    cat('<rastershader>')
-    cat('<colorrampshader colorRampType="INTERPOLATED" clip="0">')
-    cat('<item alpha="255" value="0" label="0.000000" color="#fff5f0"/>')
-    cat('<item alpha="255" value="34.1623" label="34.162310" color="#fee0d3"/>')
-    cat('<item alpha="255" value="68.3246" label="68.324620" color="#fcbda4"/>')
-    cat('<item alpha="255" value="102.487" label="102.486930" color="#fc9677"/>')
-    cat('<item alpha="255" value="136.649" label="136.649240" color="#fb7050"/>')
-    cat('<item alpha="255" value="170.812" label="170.811550" color="#f14431"/>')
-    cat('<item alpha="255" value="204.974" label="204.973860" color="#d32020"/>')
-    cat('<item alpha="255" value="236.508" label="236.508300" color="#ac1016"/>')
-    cat('<item alpha="255" value="262.787" label="262.787000" color="#67000d"/>')
-    cat('</colorrampshader>')
-    cat('</rastershader>')
-    cat('</rasterrenderer>')
-    cat('<brightnesscontrast brightness="0" contrast="0"/>')
-    cat('<huesaturation colorizeGreen="128" colorizeOn="0" colorizeRed="255" colorizeBlue="128" grayscaleMode="0" saturation="0" colorizeStrength="100"/>')
-    cat('<rasterresampler maxOversampling="2"/>')
-    cat('</pipe>')
-    cat('<blendMode>0</blendMode>')
-    cat('</qgis>')
-    sink()
-    
-    eval(parse(text=(paste("data_merge<-QUESC_database_", pu_name,"_", T1, "_", T2, sep=''))))
-    write.dbf(data_merge, "QUES-C_database.dbf")
-    
-    add.log<-data.frame(IDX=(QUESC.index), 
-                        MODULE="QUES-C", 
-                        DATE=format(Sys.time(), "%d-%m%-%Y"),
-                        TIME=format(Sys.time(), "%X"),
-                        LU1=data[1,1],
-                        LU2=data[2,1],
-                        PU=pu[1],
-                        T1=T1,
-                        T2=T2,
-                        LOOKUP_LC="From DB",
-                        LOOKUP_C=Look_up_table,
-                        LOOKUP_ZONE="From DB",
-                        NODATA=raster.nodata,
-                        OUTPUT_FOLDER=dirQUESC, row.names=NULL)
-    log.quesc<-na.omit(rbind(log.quesc,add.log))
-    write.csv(log.quesc, paste(user_temp_folder,"/LUMENS/LUMENS_quesc.log", sep=""))
-    
-    resave(QUESC.index, file=proj.file)
-    command<-paste("start ", "winword ", dirQUESC, "/LUMENS_QUES-C_report.lpr", sep="" )
-    shell(command)
-    
-    quit()  
-  }
-} else {
-  run_record <- data.frame(check_record, T1, T2, pu_selected, "QUESC")
-  colnames(run_record)[1] <- "rec"
-  colnames(run_record)[2] <- "T1"
-  colnames(run_record)[3] <- "T2"
-  colnames(run_record)[4] <- "pu_selected"
-  colnames(run_record)[5] <- "modul"
-}
+# check_record <- paste(T1, T2, pu_selected, sep="")
+# if(exists("run_record")){
+#   rec_selected <- run_record[which(run_record$rec==check_record & run_record$modul=="QUESC"),]
+#   n_rec <- nrow(rec_selected)
+#   if(n_rec==0){
+#     new_rec <- data.frame(check_record, T1, T2, pu_selected, "QUESC")
+#     colnames(new_rec)[1] <- "rec"
+#     colnames(new_rec)[2] <- "T1"
+#     colnames(new_rec)[3] <- "T2"
+#     colnames(new_rec)[4] <- "pu_selected"    
+#     colnames(new_rec)[5] <- "modul"    
+#     run_record <- rbind(run_record, new_rec)
+#   } else {
+#     #print all existing element (rtf, dbf, carbon1, carbon2, sequestration, emission)
+#     QUESC.index<-QUESC.index+1
+#     eval(parse(text=(paste("pu_name<-names(",pu[1],")", sep=''))))
+#     eval(parse(text=(paste("landuse1<-", data[1,1], sep=""))))
+#     eval(parse(text=(paste("landuse2<-", data[2,1], sep=""))))
+#     lookup_c<- read.table(Look_up_table, header=TRUE, sep=",")
+#     
+#     dirQUESC<-paste(dirname(proj.file), "/QUES/QUES-C/QUESC_analysis_",pu_name,"_",data[1,2],"_",data[2,2], "_", QUESC.index, sep="")
+#     dir.create(dirQUESC, mode="0777")
+#     setwd(dirQUESC) 
+#     
+#     eval(parse(text=(paste("done(rtffileQUESC_", rec_selected$rec, ")", sep=""))))
+#     
+#     NAvalue(landuse1)<-raster.nodata
+#     NAvalue(landuse2)<-raster.nodata
+#     rcl.m.c1<-as.matrix(lookup_c[,1])
+#     rcl.m.c2<-as.matrix(lookup_c[,3])
+#     rcl.m<-cbind(rcl.m.c1,rcl.m.c2)
+#     carbon1<-reclassify(landuse1, rcl.m)
+#     carbon2<-reclassify(landuse2, rcl.m)
+#     chk_em<-carbon1>carbon2
+#     chk_sq<-carbon1<carbon2
+#     emission<-((carbon1-carbon2)*3.67)*chk_em
+#     sequestration<-((carbon2-carbon1)*3.67)*chk_sq
+#     
+#     writeRaster(carbon1, filename="carbon1.tif", format="GTiff", overwrite=TRUE)
+#     writeRaster(carbon2, filename="carbon2.tif", format="GTiff", overwrite=TRUE)
+#     writeRaster(emission, filename="emission.tif", format="GTiff", overwrite=TRUE)
+#     writeRaster(sequestration, filename="sequestration.tif", format="GTiff", overwrite=TRUE)
+#     qmlcarbon1<-paste(dirQUESC, "/carbon1.qml", sep="")
+#     qmlcarbon2<-paste(dirQUESC, "/carbon2.qml", sep="")
+#     qmlemisi<-paste(dirQUESC, "/emission.qml", sep="")
+#     qmlseq<-paste(dirQUESC, "/sequestration.qml", sep="")
+#     
+#     sink(qmlcarbon1)
+#     cat("<!DOCTYPE qgis PUBLIC 'http://mrcc.com/qgis.dtd' 'SYSTEM'>")
+#     cat('<qgis version="2.0.0-Taoge" minimumScale="0" maximumScale="1e+08" hasScaleBasedVisibilityFlag="0">')
+#     cat('  <pipe>')
+#     cat('    <rasterrenderer opacity="1" alphaBand="-1" classificationMax="296.703" classificationMinMaxOrigin="CumulativeCutFullExtentEstimated" band="1" classificationMin="0.297" type="singlebandpseudocolor">')
+#     cat('      <rasterTransparency/>')
+#     cat('      <rastershader>')
+#     cat('        <colorrampshader colorRampType="INTERPOLATED" clip="0">')
+#     cat('          <item alpha="255" value="5" label="0-5" color="#f7fcf5"/>')
+#     cat('          <item alpha="255" value="5" label="0-5" color="#f7fcf5"/>')
+#     cat('          <item alpha="255" value="25" label="10-25" color="#bfe5b8"/>')
+#     cat('          <item alpha="255" value="50" label="25-50" color="#93d290"/>')
+#     cat('          <item alpha="255" value="100" label="50-100" color="#5fba6c"/>')
+#     cat('          <item alpha="255" value="200" label="100-200" color="#329b51"/>')
+#     cat('          <item alpha="255" value="300" label="200-300" color="#0c7734"/>')
+#     cat('          <item alpha="255" value="400" label="300-400" color="#00441b"/>')
+#     cat('        </colorrampshader>')
+#     cat('      </rastershader>')
+#     cat('    </rasterrenderer>')
+#     cat('    <brightnesscontrast brightness="0" contrast="0"/>')
+#     cat('    <huesaturation colorizeGreen="128" colorizeOn="0" colorizeRed="255" colorizeBlue="128" grayscaleMode="0" saturation="0" colorizeStrength="100"/>')
+#     cat('    <rasterresampler maxOversampling="2"/>')
+#     cat('  </pipe>')
+#     cat('  <blendMode>0</blendMode>')
+#     cat('</qgis>')
+#     sink()
+#     
+#     sink(qmlcarbon2)
+#     cat("<!DOCTYPE qgis PUBLIC 'http://mrcc.com/qgis.dtd' 'SYSTEM'>")
+#     cat('<qgis version="2.0.0-Taoge" minimumScale="0" maximumScale="1e+08" hasScaleBasedVisibilityFlag="0">')
+#     cat('  <pipe>')
+#     cat('    <rasterrenderer opacity="1" alphaBand="-1" classificationMax="296.703" classificationMinMaxOrigin="CumulativeCutFullExtentEstimated" band="1" classificationMin="0.297" type="singlebandpseudocolor">')
+#     cat('      <rasterTransparency/>')
+#     cat('      <rastershader>')
+#     cat('        <colorrampshader colorRampType="INTERPOLATED" clip="0">')
+#     cat('          <item alpha="255" value="5" label="0-5" color="#f7fcf5"/>')
+#     cat('          <item alpha="255" value="5" label="0-5" color="#f7fcf5"/>')
+#     cat('          <item alpha="255" value="25" label="10-25" color="#bfe5b8"/>')
+#     cat('          <item alpha="255" value="50" label="25-50" color="#93d290"/>')
+#     cat('          <item alpha="255" value="100" label="50-100" color="#5fba6c"/>')
+#     cat('          <item alpha="255" value="200" label="100-200" color="#329b51"/>')
+#     cat('          <item alpha="255" value="300" label="200-300" color="#0c7734"/>')
+#     cat('          <item alpha="255" value="400" label="300-400" color="#00441b"/>')
+#     cat('        </colorrampshader>')
+#     cat('      </rastershader>')
+#     cat('    </rasterrenderer>')
+#     cat('    <brightnesscontrast brightness="0" contrast="0"/>')
+#     cat('    <huesaturation colorizeGreen="128" colorizeOn="0" colorizeRed="255" colorizeBlue="128" grayscaleMode="0" saturation="0" colorizeStrength="100"/>')
+#     cat('    <rasterresampler maxOversampling="2"/>')
+#     cat('  </pipe>')
+#     cat('  <blendMode>0</blendMode>')
+#     cat('</qgis>')
+#     sink()
+#     
+#     sink(qmlemisi)
+#     cat("<!DOCTYPE qgis PUBLIC 'http://mrcc.com/qgis.dtd' 'SYSTEM'>")
+#     cat('<qgis version="2.0.0-Taoge" minimumScale="0" maximumScale="1e+08" hasScaleBasedVisibilityFlag="0">')
+#     cat('<pipe>')
+#     cat('<rasterrenderer opacity="1" alphaBand="-1" classificationMax="262.787" classificationMinMaxOrigin="CumulativeCutFullExtentEstimated" band="1" classificationMin="0" type="singlebandpseudocolor">')
+#     cat('<rasterTransparency/>')
+#     cat('<rastershader>')
+#     cat('<colorrampshader colorRampType="INTERPOLATED" clip="0">')
+#     cat('<item alpha="255" value="0" label="0.000000" color="#fff5f0"/>')
+#     cat('<item alpha="255" value="34.1623" label="34.162310" color="#fee0d3"/>')
+#     cat('<item alpha="255" value="68.3246" label="68.324620" color="#fcbda4"/>')
+#     cat('<item alpha="255" value="102.487" label="102.486930" color="#fc9677"/>')
+#     cat('<item alpha="255" value="136.649" label="136.649240" color="#fb7050"/>')
+#     cat('<item alpha="255" value="170.812" label="170.811550" color="#f14431"/>')
+#     cat('<item alpha="255" value="204.974" label="204.973860" color="#d32020"/>')
+#     cat('<item alpha="255" value="236.508" label="236.508300" color="#ac1016"/>')
+#     cat('<item alpha="255" value="262.787" label="262.787000" color="#67000d"/>')
+#     cat('</colorrampshader>')
+#     cat('</rastershader>')
+#     cat('</rasterrenderer>')
+#     cat('<brightnesscontrast brightness="0" contrast="0"/>')
+#     cat('<huesaturation colorizeGreen="128" colorizeOn="0" colorizeRed="255" colorizeBlue="128" grayscaleMode="0" saturation="0" colorizeStrength="100"/>')
+#     cat('<rasterresampler maxOversampling="2"/>')
+#     cat('</pipe>')
+#     cat('<blendMode>0</blendMode>')
+#     cat('</qgis>')
+#     sink()
+#     
+#     sink(qmlseq)
+#     cat("<!DOCTYPE qgis PUBLIC 'http://mrcc.com/qgis.dtd' 'SYSTEM'>")
+#     cat('<qgis version="2.0.0-Taoge" minimumScale="0" maximumScale="1e+08" hasScaleBasedVisibilityFlag="0">')
+#     cat('<pipe>')
+#     cat('<rasterrenderer opacity="1" alphaBand="-1" classificationMax="262.787" classificationMinMaxOrigin="CumulativeCutFullExtentEstimated" band="1" classificationMin="0" type="singlebandpseudocolor">')
+#     cat('<rasterTransparency/>')
+#     cat('<rastershader>')
+#     cat('<colorrampshader colorRampType="INTERPOLATED" clip="0">')
+#     cat('<item alpha="255" value="0" label="0.000000" color="#fff5f0"/>')
+#     cat('<item alpha="255" value="34.1623" label="34.162310" color="#fee0d3"/>')
+#     cat('<item alpha="255" value="68.3246" label="68.324620" color="#fcbda4"/>')
+#     cat('<item alpha="255" value="102.487" label="102.486930" color="#fc9677"/>')
+#     cat('<item alpha="255" value="136.649" label="136.649240" color="#fb7050"/>')
+#     cat('<item alpha="255" value="170.812" label="170.811550" color="#f14431"/>')
+#     cat('<item alpha="255" value="204.974" label="204.973860" color="#d32020"/>')
+#     cat('<item alpha="255" value="236.508" label="236.508300" color="#ac1016"/>')
+#     cat('<item alpha="255" value="262.787" label="262.787000" color="#67000d"/>')
+#     cat('</colorrampshader>')
+#     cat('</rastershader>')
+#     cat('</rasterrenderer>')
+#     cat('<brightnesscontrast brightness="0" contrast="0"/>')
+#     cat('<huesaturation colorizeGreen="128" colorizeOn="0" colorizeRed="255" colorizeBlue="128" grayscaleMode="0" saturation="0" colorizeStrength="100"/>')
+#     cat('<rasterresampler maxOversampling="2"/>')
+#     cat('</pipe>')
+#     cat('<blendMode>0</blendMode>')
+#     cat('</qgis>')
+#     sink()
+#     
+#     eval(parse(text=(paste("data_merge<-QUESC_database_", pu_name,"_", T1, "_", T2, sep=''))))
+#     write.dbf(data_merge, "QUES-C_database.dbf")
+#     
+#     add.log<-data.frame(IDX=(QUESC.index), 
+#                         MODULE="QUES-C", 
+#                         DATE=format(Sys.time(), "%d-%m%-%Y"),
+#                         TIME=format(Sys.time(), "%X"),
+#                         LU1=data[1,1],
+#                         LU2=data[2,1],
+#                         PU=pu[1],
+#                         T1=T1,
+#                         T2=T2,
+#                         LOOKUP_LC="From DB",
+#                         LOOKUP_C=Look_up_table,
+#                         LOOKUP_ZONE="From DB",
+#                         NODATA=raster.nodata,
+#                         OUTPUT_FOLDER=dirQUESC, row.names=NULL)
+#     log.quesc<-na.omit(rbind(log.quesc,add.log))
+#     write.csv(log.quesc, paste(user_temp_folder,"/LUMENS/LUMENS_quesc.log", sep=""))
+#     
+#     resave(QUESC.index, file=proj.file)
+#     command<-paste("start ", "winword ", dirQUESC, "/LUMENS_QUES-C_report.lpr", sep="" )
+#     shell(command)
+#     
+#     quit()  
+#   }
+# } else {
+#   run_record <- data.frame(check_record, T1, T2, pu_selected, "QUESC")
+#   colnames(run_record)[1] <- "rec"
+#   colnames(run_record)[2] <- "T1"
+#   colnames(run_record)[3] <- "T2"
+#   colnames(run_record)[4] <- "pu_selected"
+#   colnames(run_record)[5] <- "modul"
+# }
 
-#====PROJECTION HANDLING====
-for(j in 1:n) {
-  input <- as.character(data[j,1])
-  eval(parse(text=(paste(input,"[",input, "==", raster.nodata, "]<-NA", sep=""))))
-  command1<-paste(command1,input, ",", sep="")
+#===Load Datasets====
+pu_name<-data_pu$RST_NAME # <== planning unit
+if (data_pu$RST_DATA=="ref") {
+  get_from_rdb(symbol=paste(data_pu$RST_DATA), filebase=paste(data_dir, "planning_unit", sep=""))
+  ref[ref==0]<-NA
+  zone<-ref
+  get_from_rdb(symbol=paste(data_pu$LUT_NAME), filebase=paste(data_dir, "planning_unit", sep=""))
+  lookup_z<-p.admin.df
+} else {
+  get_from_rdb(symbol=paste(data_pu$RST_DATA), filebase=paste(data_dir, "planning_unit", sep=""))
+  eval(parse(text=(paste("zone<-", data_pu$RST_DATA, sep=""))))  
+  get_from_rdb(symbol=paste(data_pu$LUT_NAME), filebase=paste(data_dir, "planning_unit", sep=""))
+  eval(parse(text=(paste("lookup_z<-", data_pu$LUT_NAME, sep=""))))  
 }
+#landuse first period
+get_from_rdb(symbol=paste(data_luc1$RST_DATA), filebase=paste(data_dir, "land_use_cover", sep=""))
+eval(parse(text=(paste("landuse1<-", data_luc1$RST_DATA, sep=""))))
+landuse1[landuse1==0]<-NA
+#landuse second period
+get_from_rdb(symbol=paste(data_luc2$RST_DATA), filebase=paste(data_dir, "land_use_cover", sep=""))
+eval(parse(text=(paste("landuse2<-", data_luc2$RST_DATA, sep=""))))
+landuse2[landuse2==0]<-NA
+#landcover lookup table
+get_from_rdb(symbol=paste(data_lut$TBL_DATA), filebase=paste(data_dir, "lookup_table", sep=""))
+#set lookup table
+eval(parse(text=(paste("lookup_c<-", data_lut$TBL_DATA, sep=""))))
+lookup_c<-lookup_c[which(lookup_c[1] != raster.nodata),]
+lookup_lc<-lookup_c
+lookup_ref<-p.admin.df
+colnames(lookup_lc)<-c("ID","LC","CARBON")
+colnames(lookup_z)<-c("ID", "COUNT_ZONE", "ZONE")
+colnames(lookup_ref)<-c("Z_NAME", "ZONE")
 
 #====projection handling====
 if (grepl("+units=m", as.character(ref@crs))){
@@ -414,19 +322,6 @@ if (grepl("+units=m", as.character(ref@crs))){
                          type = "ok")
   quit()
 }
-
-time_start<-paste(eval(parse(text=(paste("Sys.time ()")))), sep="")
-
-#====Load Datasets====
-setwd(LUMENS_temp_user)
-ref_name<-names(ref)
-writeRaster(ref, filename="ref.tif", format="GTiff", overwrite=TRUE)
-ref<-raster("ref.tif")
-names(ref)<-ref_name
-
-eval(parse(text=(paste("landuse1<-", data[1,1], sep=""))))
-eval(parse(text=(paste("landuse2<-", data[2,1], sep=""))))
-eval(parse(text=(paste("zone<-", data2[1,1],sep=""))))
 
 #====Check Peat Data====
 # check_peat<-as.data.frame(as.character(ls(pattern="peat.index")))
@@ -457,21 +352,11 @@ eval(parse(text=(paste("zone<-", data2[1,1],sep=""))))
 #   lut.pu_peat<-legend_zone_peat
 # } 
 
-#====Load Lookup Tables====
-lookup_c<- read.table(Look_up_table, header=TRUE, sep=",")
-lookup_z <- lut.pu
-lookup_c<-lookup_c[which(lookup_c[1] != raster.nodata),]
-lookup_lc<-lookup_c
-lookup_ref<-p.admin.df
-colnames(lookup_lc)<-c("ID","LC","CARBON")
-colnames(lookup_z)<-c("ID", "Z_NAME")
-colnames(lookup_ref)<-c("Z_NAME", "ZONE")
-
 #====Set Project Properties====
 title=location
 tab_title<-as.data.frame(title)
-period1=data[1,2]
-period2=data[2,2]
+period1=T1
+period2=T2
 period=period2-period1
 proj_prop<-as.data.frame(title)
 proj_prop$period1<-period1
@@ -491,6 +376,7 @@ chk_sq<-carbon1<carbon2
 emission<-((carbon1-carbon2)*3.67)*chk_em
 sequestration<-((carbon2-carbon1)*3.67)*chk_sq
 
+#============================================in progress================================
 #===CHECK EXISTING RASTER BRICK OR CROSSTAB====
 setwd(LUMENS_temp_user)
 command1<-paste(command1,pu, sep="")
@@ -1468,22 +1354,22 @@ command<-paste("start ", "winword ", dirQUESC, "/LUMENS_QUES-C_report.lpr", sep=
 shell(command)
 
 #====write LUMENS log file====
-add.log<-data.frame(IDX=(QUESC.index), 
-                    MODULE="QUES-C", 
-                    DATE=format(Sys.time(), "%d-%m%-%Y"),
-                    TIME=format(Sys.time(), "%X"),
-                    LU1=data[1,1],
-                    LU2=data[2,1],
-                    PU=pu[1],
-                    T1=T1,
-                    T2=T2,
-                    LOOKUP_LC="From DB",
-                    LOOKUP_C=Look_up_table,
-                    LOOKUP_ZONE="From DB",
-                    NODATA=raster.nodata,
-                    OUTPUT_FOLDER=dirQUESC, row.names=NULL)
-log.quesc<-na.omit(rbind(log.quesc,add.log))
-write.csv(log.quesc, paste(user_temp_folder,"/LUMENS/LUMENS_quesc.log", sep=""))
+# add.log<-data.frame(IDX=(QUESC.index), 
+#                     MODULE="QUES-C", 
+#                     DATE=format(Sys.time(), "%d-%m%-%Y"),
+#                     TIME=format(Sys.time(), "%X"),
+#                     LU1=data[1,1],
+#                     LU2=data[2,1],
+#                     PU=pu[1],
+#                     T1=T1,
+#                     T2=T2,
+#                     LOOKUP_LC="From DB",
+#                     LOOKUP_C=Look_up_table,
+#                     LOOKUP_ZONE="From DB",
+#                     NODATA=raster.nodata,
+#                     OUTPUT_FOLDER=dirQUESC, row.names=NULL)
+# log.quesc<-na.omit(rbind(log.quesc,add.log))
+# write.csv(log.quesc, paste(user_temp_folder,"/LUMENS/LUMENS_quesc.log", sep=""))
 
 gc()
 

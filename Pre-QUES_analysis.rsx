@@ -1,4 +1,4 @@
-##[QUES]=group
+##Alpha - QUES=group
 ##landuse_1=string
 ##landuse_2=string
 ##planning_unit=string
@@ -166,6 +166,7 @@ landuse2[landuse2==0]<-NA
 #landcover lookup table
 get_from_rdb(symbol=paste(data_lut$TBL_DATA), filebase=paste(data_dir, "lookup_table", sep=""))
 #set lookup table
+eval(parse(text=(paste("lut.lc<-", data_lut$TBL_DATA, sep=""))))
 lookup_lc2<-lut.lc
 lookup_l<-lut.lc
 lookup_lc<-lut.lc
@@ -233,7 +234,6 @@ while(k < n) {
 lu.db$value_temp<-NULL
 
 #====CREATE OVERALL SUMMARY OF LAND USE CHANGE====
-eval(parse(text=(paste("lut.lc<-", data_lut$TBL_DATA, sep=""))))
 lut.lc<-lut.lc[which(lut.lc$ID!=raster.nodata),]
 colnames(lut.lc)[1]<-"ID"
 colnames(lut.lc)[2]<-"LC"
