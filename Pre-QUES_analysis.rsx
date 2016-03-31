@@ -56,7 +56,7 @@ data_lut<-list_of_data_lut[which(list_of_data_lut$TBL_NAME==lookup_lc),]
 T1<-data_luc1$PERIOD
 T2<-data_luc2$PERIOD
 
-#===Check LUMENS Pre-QUES log file====
+#==Check LUMENS Pre-QUES log file===
 # if (file.exists(paste(user_temp_folder,"/LUMENS/LUMENS_pre_ques.log", sep=""))) {
 #   log.preques<-read.table(paste(user_temp_folder,"/LUMENS/LUMENS_pre_ques.log", sep=""), sep=",", header=T, row.names=1)
 #   print("LUMENS Pre-QuES log file is available")
@@ -77,7 +77,7 @@ T2<-data_luc2$PERIOD
 #                           OUTPUT_FOLDER=NA, row.names=NULL)
 # }
 
-#====CREATE RUNNING RECORD====
+#==CREATE RUNNING RECORD==
 # check_record <- paste(T1, T2, pu_selected, sep="")
 # if(exists("run_record")){
 #   rec_selected <- run_record[which(run_record$rec==check_record & run_record$modul=="PreQUES"),]
@@ -141,7 +141,7 @@ T2<-data_luc2$PERIOD
 #   colnames(run_record)[5] <- "modul"
 # }
 
-#Load datasets
+#===Load Datasets====
 pu_name<-data_pu$RST_NAME # <== planning unit
 if (data_pu$RST_DATA=="ref") {
   get_from_rdb(symbol=paste(data_pu$RST_DATA), filebase=paste(data_dir, "planning_unit", sep=""))
@@ -165,6 +165,13 @@ eval(parse(text=(paste("landuse2<-", data_luc2$RST_DATA, sep=""))))
 landuse2[landuse2==0]<-NA
 #landcover lookup table
 get_from_rdb(symbol=paste(data_lut$TBL_DATA), filebase=paste(data_dir, "lookup_table", sep=""))
+#set lookup table
+lookup_lc2<-lut.lc
+lookup_l<-lut.lc
+lookup_lc<-lut.lc
+colnames(lookup_l)<-c("ID", "CLASS")
+colnames(lookup_lc)<-c("ID", "CLASS")
+colnames(lookup_z)<-c("ID", "COUNT_ZONE", "ZONE")
 
 #====Projection handling====
 if (grepl("+units=m", as.character(ref@crs))){
@@ -183,17 +190,15 @@ if (grepl("+units=m", as.character(ref@crs))){
   quit()
 }
 
-#Set working directory
-PreQUES.index=PreQUES.index+1
+#===Set working directory====
+PreQUES.index<-PreQUES.index+1
 preques_folder<-paste("PreQUES_analysis_",pu_name,"_" ,T1,"_",T2,"_",PreQUES.index,sep="")
 result_dir<-paste(dirname(proj.file),"/QUES/PreQUES/", sep="")
-setwd(result_dir)
 dir.create(preques_folder)
-
 result_dir<-paste(result_dir,preques_folder, sep='')
 setwd(result_dir)
 
-#===CHECK EXISTING RASTER BRICK OR CROSSTAB====
+#==CHECK EXISTING RASTER BRICK OR CROSSTAB===
 #setwd(LUMENS_temp_user)
 #command1<-paste(command1, "zone", sep="")
 
@@ -213,7 +218,7 @@ setwd(result_dir)
 #   check_lucdb<-TRUE
 # }
 
-#Create cross-tabulation
+#===Create cross-tabulation====
 R<-(zone*1) + (landuse1*100^1) + (landuse2*100^2)
 lu.db<-as.data.frame(freq(R))
 lu.db<-na.omit(lu.db)
@@ -245,28 +250,22 @@ for (q in 2:landuse.index) {
   eval(parse(text=(paste("colnames(lu.summary)[", q+2, "]<-paste(period", q, ", '_ha', sep='')", sep=""))))
 }
 
-#====load look up table=====
-lookup_lc2<-lut.lc
-lookup_l<-lut.lc
-lookup_lc<-lut.lc
-colnames(lookup_l)<-c("ID", "CLASS")
-colnames(lookup_lc)<-c("ID", "CLASS")
-colnames(lookup_z)<-c("ID", "COUNT_ZONE", "ZONE")
-
 #====CREATE INDIVIDUAL TABLE FOR EACH LANDUSE MAP====
-#area for first landcover and second 
+#set area for first landcover and second 
 eval(parse(text=(paste("area_lc1<-", data_luc1$LUT_NAME, sep=""))))
-area_lc1<-subset(area_lc1, select=c('ID','COUNT'))
+area_lc1<-subset(area_lc1, select=c('ID','COUNT', 'Classified'))
 eval(parse(text=(paste("area_lc2<-", data_luc2$LUT_NAME, sep=""))))
-area_lc2<-subset(area_lc2, select=c('ID','COUNT'))
+area_lc2<-subset(area_lc2, select=c('ID','COUNT', 'Classified'))
 colnames(area_lc1)[1] = "ID"
 colnames(area_lc1)[2] = "COUNT_LC1"
+colnames(area_lc1)[3] = "Classified1"
 colnames(area_lc2)[1] = "ID"
 colnames(area_lc2)[2] = "COUNT_LC2"
+colnames(area_lc2)[3] = "Classified2"
 area_lc1<-merge(area_lc1,lookup_l,by="ID")
 area_lc2<-merge(area_lc2,lookup_l,by="ID")
-colnames(area_lc1)[3] = "CLASS_LC1"
-colnames(area_lc2)[3] = "CLASS_LC2"
+colnames(area_lc1)[4] = "CLASS_LC1"
+colnames(area_lc2)[4] = "CLASS_LC2"
 
 #combine all data in data_merge
 colnames(lu.db)[1] ="ID_CHG"
@@ -310,6 +309,7 @@ eval(parse(text=(paste("writeRaster(R, filename='luchgmap_", pu_name ,"_", T1, "
 #   eval(parse(text=(paste("write.dbf(luchg_att, 'lu.db_", pu_name ,"_", T1, "_", T2, ".dbf')", sep="")))) 
 # }
 
+#Top ten the largest land use changes 
 lg_chg <- data_merge_sel
 lg_chg$ID1<-as.numeric(as.character((lg_chg$ID_LC1)))
 lg_chg$ID2<-as.numeric(as.character((lg_chg$ID_LC2)))
@@ -321,14 +321,14 @@ lg_chg$ID1<-lg_chg$ID2<-lg_chg$IDC<-NULL
 lg_chg_top<-head(lg_chg, n=10)
 lg_chg_top$LC_t1<-lg_chg_top$LC_t2<-NULL
 
-#====Landuse Dominant Change====
+#====Landuse dominant change====
 chg_only<-aggregate(COUNT~LU_CHG,data=lg_chg,FUN=sum)
 chg_only$CHG_CODE<-as.factor(toupper(abbreviate(chg_only$LU_CHG, minlength=5, strict=FALSE, method="both")))
 chg_only<-chg_only[order(-chg_only$COUNT),]
 chg_only<-chg_only[c(1,3,2)]
 chg_only_top<-head(chg_only, n=10)
 
-#====Zonal Dominant Change====
+#====Zonal dominant change====
 lg_chg_zonal<-as.data.frame(NULL)
 for (l in 1:length(area_zone$ID)){
   tryCatch({
@@ -344,7 +344,7 @@ for (l in 1:length(area_zone$ID)){
   },error=function(e){cat("ERROR :",conditionMessage(e), "\n")})
 }
 
-#====calculate basic statistic====
+#====Calculate basic statistic====
 for (z in 3:ncol(lu.summary)){
   lu.summary[z]<-lu.summary[z]*Spat_res
 }
@@ -536,7 +536,6 @@ alphabeta.plot<-function(alphabeta_table, t1, t2, area.analysis){
     return(ab.plot)
     #+theme_bw()
   }
-  
 }
 
 #ALPHA BETA AT LANDSCAPE LEVEL
@@ -620,7 +619,6 @@ Largest.chg<- ggplot(data=chg_only_top, aes(x=reorder(CHG_CODE, -COUNT),y=COUNT,
   theme(axis.title.x=element_blank(), axis.text.x = element_text(size=8),
         panel.grid.major=element_blank(), panel.grid.minor=element_blank())
 
-setwd(result_dir)
 #====WRITE REPORT====
 title1<-"{\\colortbl;\\red0\\green0\\blue0;\\red255\\green0\\blue0;\\red146\\green208\\blue80;\\red0\\green176\\blue240;\\red140\\green175\\blue71;\\red0\\green112\\blue192;\\red79\\green98\\blue40;} \\pard\\qr\\b\\fs70\\cf2 L\\cf3U\\cf4M\\cf5E\\cf6N\\cf7S \\cf1REPORT \\par\\b0\\fs20\\ql\\cf1"
 title2<-paste("\\pard\\qr\\b\\fs40\\cf1 PreQUES-Land Use Change Analysis ", "for ", location, ", ", province, ", ", country, "\\par\\b0\\fs20\\ql\\cf1", sep="")
@@ -762,7 +760,7 @@ addParagraph(rtffile, paste("\\b \\fs20 Grafik IO: dinamika perubahan lahan di\\
 addPlot(rtffile,plot.fun=print, width=6.7,height=5,res=150,  landscape.alphabeta.plot)
 addNewLine(rtffile)
 addNewLine(rtffile)
-
+#Land use dominant changes report
 if(analysis.option==1 | analysis.option==0){
   addParagraph(rtffile, chapter3)
   addParagraph(rtffile, line)
@@ -798,7 +796,7 @@ if(analysis.option==1 | analysis.option==0){
     },error=function(e){cat("Nice try pal! ~ please re-check your input data :",conditionMessage(e), "\n"); addParagraph(rtffile, "no data");addNewLine(rtffile)})
   }
 }
-
+#Aplha-beta analysis report
 if(analysis.option==2 | analysis.option==0){
   for(i in 1:nrow(lookup_z)){
     checkAlphabetaPlot<-eval(parse(text=( paste("exists('alphabeta_plot_zone_", i, "')" , sep=""))))
@@ -828,22 +826,22 @@ done(rtffile)
 #newPre<-paste("PreQUES_data_", data[1,2], "_", data[2,2], sep="")
 
 #command<-paste("resave(PreQUES.index,Ov_chg,Ov_chg.ha,lut.lc,Ov_chg.rate,", newPre, ",",  sep="")
-eval(parse(text=(paste("rtffilePreQUES_", check_record, " <- rtffile", sep=""))))
-eval(parse(text=(paste("PreQUES_database_", pu_name, "_", data[1,2], "_", data[2,2], " <- data_merge", sep=""))))
-command<-paste("resave(rtffilePreQUES_", check_record, ",PreQUES_database_", pu_name, "_", data[1,2], "_", data[2,2], ",run_record,PreQUES.index,lut.lc,",  sep="")
+#eval(parse(text=(paste("rtffilePreQUES_", check_record, " <- rtffile", sep=""))))
+eval(parse(text=(paste("PreQUES_database_", pu_name, "_", T1, "_", T2, " <- data_merge", sep=""))))
+#command<-paste("resave(rtffilePreQUES_", check_record, ",PreQUES_database_", pu_name, "_", data[1,2], "_", data[2,2], ",run_record,PreQUES.index,lut.lc,",  sep="")
+#command<-paste(command,"file='",proj.file,"')", sep="")
+eval(parse(text=(paste("resave(PreQUES_database_", pu_name, "_", T1, "_", T2, ", PreQUES.index, file='", proj.file, "')", sep=""))))
 
-command<-paste(command,"file='",proj.file,"')", sep="")
-eval(parse(text=(command)))
-
-#====Pre-QuES Land Use Change Trajectories====
+#====Pre-QUES Land Use Change Trajectories====
 if(analysis.option==3 | analysis.option==0){
-  traj_record <- data.frame(check_record, T1, T2, pu_selected, "Traj")
-  colnames(traj_record)[1] <- "rec"
-  colnames(traj_record)[2] <- "T1"
-  colnames(traj_record)[3] <- "T2"
-  colnames(traj_record)[4] <- "pu_selected"
-  colnames(traj_record)[5] <- "modul"
-  run_record <- rbind(run_record, traj_record)
+  #create run record
+  #traj_record <- data.frame(check_record, T1, T2, pu_selected, "Traj")
+  #colnames(traj_record)[1] <- "rec"
+  #colnames(traj_record)[2] <- "T1"
+  #colnames(traj_record)[3] <- "T2"
+  #colnames(traj_record)[4] <- "pu_selected"
+  #colnames(traj_record)[5] <- "modul"
+  #run_record <- rbind(run_record, traj_record)
   #PREQUES
   #substitute lookup table internal
   trj<-c(11:17,22:27,32:37,42:44,46:47,52:57,62:67,77,88)
@@ -860,39 +858,25 @@ if(analysis.option==3 | analysis.option==0){
   
   lu_class<-c(1,2,3,4,5,6,7,8)
   lu_class<-as.data.frame(lu_class)
-  lu_class$Rec_LU<-c("Hutan primer", "Hutan sekunder", "Tanaman pohon monokultur", "Tanaman pohon campuran", "Tanaman pertanian semusim", "Semak, rumput, dan lahan terbuka", "Pemukiman", "Lain-lain")
+  lu_class$Classified<-c("Hutan primer", "Hutan sekunder", "Tanaman pohon monokultur", "Tanaman pohon campuran", "Tanaman pertanian semusim", "Semak, rumput dan lahan terbuka", "Pemukiman", "Lain-lain")
   
-  #load look up table (user input)
-  lookup_l<- lut.lc
-  lookup_z <- lut.pu
-  #lookup_lr<-read.table(lu_reclass, header=TRUE, sep=",")
-  
-  lookup_l2<-lookup_l
-  lookup_l2$ID_L<-0
-  countrow<-nrow(lookup_l2)
-  x<-rep("---", times=countrow)
-  xx<-x
-  lookup_lr_edit<-cbind(lookup_l2,x,xx)
-  xxx<-rep("---", times=countrow-(nrow(lu_class)))
-  xxxx<-xxx
-  V<-cbind(xxx,xxxx)
-  colnames(V)[1]<-"lu_class"
-  colnames(V)[2]<-"Rec_LU"
-  lookup_lr_edit2<-rbind(lu_class,V)
-  #lookup_lr_edit3<-cbind(lookup_lr_edit2, x,xx)
-  lookup_lr<-cbind(lookup_lr_edit, lookup_lr_edit2)
-  lookup_lr<-edit(lookup_lr)
-  lookup_lr<-subset(lookup_lr, select=c(1, 2, 3))
-  
-  #create trajectories database
-  colnames(lookup_lr)[1]="ID_LC1"
-  colnames(lookup_lr)[2]="CLASS1"
-  colnames(lookup_lr)[3]="ID_L1"
-  data_merge_tr<-as.data.frame(merge(data_merge,lookup_lr, by="ID_LC1"))
-  colnames(lookup_lr)[1]="ID_LC2"
-  colnames(lookup_lr)[2]="CLASS2"
-  colnames(lookup_lr)[3]="ID_L2"
-  data_merge_tr<-as.data.frame(merge(data_merge_tr,lookup_lr, by="ID_LC2"))
+  #Create trajectories database
+  freq1<-subset(area_lc1, select=c('ID', 'CLASS_LC1', 'Classified1'))
+  freq2<-subset(area_lc2, select=c('ID', 'CLASS_LC2', 'Classified2'))
+  colnames(freq1)[3]<-"Classified"
+  colnames(freq2)[3]<-"Classified"
+  freq1<-merge(freq1, lu_class, by="Classified")
+  freq2<-merge(freq2, lu_class, by="Classified")
+  freq1<-subset(freq1, select=c('ID', 'CLASS_LC1', 'lu_class'))
+  freq2<-subset(freq2, select=c('ID', 'CLASS_LC2', 'lu_class'))
+  colnames(freq1)[1]="ID_LC1"
+  colnames(freq1)[2]="CLASS1"
+  colnames(freq1)[3]="ID_L1"
+  data_merge_tr<-as.data.frame(merge(data_merge, freq1, by="ID_LC1"))
+  colnames(freq2)[1]="ID_LC2"
+  colnames(freq2)[2]="CLASS2"
+  colnames(freq2)[3]="ID_L2"
+  data_merge_tr<-as.data.frame(merge(data_merge_tr, freq2, by="ID_LC2"))
   data_merge_tr$CLASS1<-data_merge_tr$CLASS2<-NULL
   data_merge_tr$T1<-data_merge_tr$ID_L1*10
   data_merge_tr$T2<-data_merge_tr$ID_L2
@@ -900,10 +884,6 @@ if(analysis.option==3 | analysis.option==0){
   colnames(lookup_traj)[1]="TR"
   PreQUES_traj_database<-as.data.frame(merge(data_merge_tr,lookup_traj, by="TR"))
   PreQUES_traj_database$Traj_Code<-toupper(abbreviate(PreQUES_traj_database$Traj))
-  colnames(lookup_lr)[1]="ID"
-  
-  lookup_l<-lookup_lr; #lu table
-  lookup_l[3]<-NULL
   
   #cross_temp<-data.frame(Var1=PreQUES_traj_database$ID_LC1, Var2=PreQUES_traj_database$ID_LC2, Var3=PreQUES_traj_database$ZONE, Freq=PreQUES_traj_database$COUNT)
   
@@ -1023,32 +1003,31 @@ if(analysis.option==3 | analysis.option==0){
   },error=function(e){cat("No reforestation found",conditionMessage(e), "\n")})
   
   #SUMMARY FOREST CHANGE IN %
-  forest.change.rate<-merge(deforest.rate, degrad.rate,by='ZONE',all=T)
+  forest.change.rate<-merge(deforest.rate, degrad.rate, by='ZONE', all=T)
   if(ncol(reforest.rate)==2){
     forest.change.rate<-merge(forest.change.rate, reforest.rate,by='ZONE',all=T)
   } else {print('no reforestation found')}
   
   
   #create trajectories map
-  eval(parse(text=paste("landuse_tr1<-",data[1,1],sep="")))
-  eval(parse(text=paste("landuse_tr2<-",data[2,1],sep="")))
+  landuse_tr1<-landuse1
+  landuse_tr2<-landuse2
   landuse_tr1<- reclassify(landuse_tr1, cbind(128,NA))
   landuse_tr2<- reclassify(landuse_tr2, cbind(128,NA))
-  landuse_tr1<-ratify(landuse_tr1, filename='lu1.grd',count=TRUE,overwrite=TRUE)
-  landuse_tr2<-ratify(landuse_tr2, filename='lu2.grd',count=TRUE,overwrite=TRUE)
-  #lookup_lr<-read.table(lu_reclass, header=TRUE, sep=",")
-  colnames(lookup_lr)[3]="ID_L1"
-  levels(landuse_tr1)<-merge((levels(landuse_tr1)),lookup_lr, by="ID")
-  colnames(lookup_lr)[3]="ID_L2"
-  levels(landuse_tr2)<-merge((levels(landuse_tr2)),lookup_lr, by="ID")
-  landuse_tr1<-deratify(landuse_tr1,'ID_L1')
-  landuse_tr2<-deratify(landuse_tr2,'ID_L2')
-  lu_trajectories<-overlay(landuse_tr1,landuse_tr2,fun=function(x,y){return((x*10)+y)})
-  lu_trajectories<-ratify(lu_trajectories, filename='lu_trajectories.grd',count=TRUE,overwrite=TRUE)
+  landuse_tr1<-ratify(landuse_tr1,count=TRUE,overwrite=TRUE)
+  landuse_tr2<-ratify(landuse_tr2,count=TRUE,overwrite=TRUE)
+  colnames(freq1)[1]="ID"
+  levels(landuse_tr1)<-merge((levels(landuse_tr1)), freq1, by="ID")
+  colnames(freq2)[1]="ID"
+  levels(landuse_tr2)<-merge((levels(landuse_tr2)), freq2, by="ID")
+  landuse_tr1<-deratify(landuse_tr1, 'ID_L1')
+  landuse_tr2<-deratify(landuse_tr2, 'ID_L2')
+  lu_trajectories<-overlay(landuse_tr1, landuse_tr2, fun=function(x,y){return((x*10)+y)})
+  lu_trajectories<-ratify(lu_trajectories, count=TRUE, overwrite=TRUE)
   colnames(name_traj)[1]="ID"
   levels(lu_trajectories)<-merge((levels(lu_trajectories)),name_traj,by='ID')
   lu_trajectories_final<-deratify(lu_trajectories,'ID_trf')
-  lu_trajectories_final<-ratify(lu_trajectories_final, filename='lu_trajectories_final.grd',count=TRUE,overwrite=TRUE)
+  lu_trajectories_final<-ratify(lu_trajectories_final, count=TRUE, overwrite=TRUE)
   colnames(leg_traj)[1]="ID"
   levels(lu_trajectories_final)<-merge((levels(lu_trajectories_final)),leg_traj,by='ID')
   
@@ -1129,7 +1108,7 @@ if(analysis.option==3 | analysis.option==0){
   colnames(PreQUES_traj_forest.overal)<-c("Forest cover changes", "Area (Ha)")
   
   #===Trajectories Data Export===
-  PreQUES.index.traj=paste( "_",pu_name,"_",data[1,2], "_", data[2,2], sep="")
+  PreQUES.index.traj=paste( "_",pu_name,"_",T1, "_",T2, sep="")
   eval(parse(text=(paste("PreQUES_traj_database", PreQUES.index.traj, "<-PreQUES_traj_database", sep=""   ))))
   newTraj<-paste("PreQUES_traj_database", PreQUES.index.traj, sep="")
   
@@ -1284,11 +1263,11 @@ if(analysis.option==3 | analysis.option==0){
   addNewLine(rtffile)
   done(rtffile)
   
-  eval(parse(text=(paste("rtffileTraj_", check_record, " <- rtffile", sep=""))))
-  command<-paste("resave(rtffileTraj_",check_record,",run_record,", newTraj,",", sep="")
-  command<-paste(command,"file='",proj.file,"')", sep="")
+  #eval(parse(text=(paste("rtffileTraj_", check_record, " <- rtffile", sep=""))))
+  #command<-paste("resave(rtffileTraj_",check_record,",run_record,", newTraj,",", sep="")
+  #command<-paste(command,"file='",proj.file,"')", sep="")
   
-  eval(parse(text=(command)))
+  #eval(parse(text=(command)))
 }
 
 command2<-paste("start ", "winword ", result_dir, "/LUMENS_Pre-QUES_change_report.lpr", sep="" )
