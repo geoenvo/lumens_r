@@ -4,6 +4,7 @@
 ##planning_unit=string
 ##lookup_c=string
 ##raster.nodata=number 0
+##statusoutput=output table
 
 library(tiff)
 library(foreign)
@@ -1343,5 +1344,6 @@ shell(command)
 # log.quesc<-na.omit(rbind(log.quesc,add.log))
 # write.csv(log.quesc, paste(user_temp_folder,"/LUMENS/LUMENS_quesc.log", sep=""))
 
-gc()
-
+statuscode<-1
+statusmessage<-"QUES-C analysis successfully completed!"
+statusoutput<-data.frame(statuscode=statuscode, statusmessage=statusmessage)

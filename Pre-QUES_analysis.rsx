@@ -5,6 +5,7 @@
 ##lookup_lc=string
 ##Analysis_option=selection All analysis; Perubahan dominan di tiap zona; Dinamika perubahan di tiap zona (Alpha-Beta); Analisis alur perubahan (Trajectory)
 ##raster.nodata=number 0
+##statusoutput=output table
 
 library(rtf)
 library(rgdal)
@@ -1295,4 +1296,6 @@ shell(command2)
 #CLEAN ENVIRONMENT
 #rm(list=ls(all.names=TRUE))
 
-gc()
+statuscode<-1
+statusmessage<-"Pre-QUES analysis successfully completed!"
+statusoutput<-data.frame(statuscode=statuscode, statusmessage=statusmessage)
