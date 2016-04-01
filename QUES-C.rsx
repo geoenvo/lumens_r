@@ -5,12 +5,6 @@
 ##lookup_c=string
 ##raster.nodata=number 0
 
-landuse_1="LC1990"
-landuse_2="LC2000"
-planning_unit="PUR_final_reconciliation"
-lookup_c="carbon"
-raster.nodata=0
-
 library(tiff)
 library(foreign)
 library(rasterVis)
@@ -273,8 +267,15 @@ T2<-data_luc2$PERIOD
 #   colnames(run_record)[5] <- "modul"
 # }
 
+#====Set Working Directory====
+pu_name<-data_pu$RST_NAME 
+QUESC.index<-QUESC.index+1
+dirQUESC<-paste(dirname(proj.file), "/QUES/QUES-C/QUESC_analysis_",pu_name,"_",T1,"_",T2, "_", QUESC.index, sep="")
+dir.create(dirQUESC, mode="0777")
+setwd(dirQUESC) 
+
 #===Load Datasets====
-pu_name<-data_pu$RST_NAME # <== planning unit
+#planning unit
 if (data_pu$RST_DATA=="ref") {
   get_from_rdb(symbol=paste(data_pu$RST_DATA), filebase=paste(data_dir, "planning_unit", sep=""))
   ref[ref==0]<-NA
@@ -304,7 +305,11 @@ lookup_lc<-lookup_c
 lookup_ref<-p.admin.df
 colnames(lookup_lc)<-c("ID","LC","CARBON")
 colnames(lookup_z)<-c("ID", "COUNT_ZONE", "ZONE")
-colnames(lookup_ref)<-c("Z_NAME", "ZONE")
+colnames(lookup_ref)<-c("REF", "REF_NAME")
+ref_name<-names(ref)
+writeRaster(ref, filename="ref.tif", format="GTiff", overwrite=TRUE)
+ref<-raster("ref.tif")
+names(ref)<-ref_name
 
 #====projection handling====
 if (grepl("+units=m", as.character(ref@crs))){
@@ -363,11 +368,53 @@ proj_prop$period1<-period1
 proj_prop$period2<-period2
 proj_prop$period <- do.call(paste, c(proj_prop[c("period1", "period2")], sep = " - "))
 
+#===Create cross-tabulation====
+R<-(zone*1) + (ref*100^1)+ (landuse1*100^2) + (landuse2*100^3)
+lu.db<-as.data.frame(freq(R))
+lu.db<-na.omit(lu.db)
+n<-4
+k<-0
+lu.db$value_temp<-lu.db$value
+while(k < n) {
+  eval(parse(text=(paste("lu.db$Var", n-k, "<-lu.db$value_temp %% 100", sep=""))))  
+  lu.db$value_temp<-floor(lu.db$value_temp/100)
+  k=k+1
+}
+lu.db$value_temp<-NULL
+#rename column
+colnames(lu.db)[1] ="ID_CHG"
+colnames(lu.db)[2] = "COUNT"
+colnames(lu.db)[3] = "ZONE"
+colnames(lu.db)[4] = "REF"
+colnames(lu.db)[5] = "ID_LC1"
+colnames(lu.db)[6] = "ID_LC2"
+colnames(lookup_c)[1]="ID_LC1"
+colnames(lookup_c)[2]="LC_t1"
+colnames(lookup_c)[3]="CARBON_t1"
+data_merge <- merge(lu.db,lookup_c,by="ID_LC1")
+colnames(lookup_c)[1]="ID_LC2"
+colnames(lookup_c)[2]="LC_t2"
+colnames(lookup_c)[3]="CARBON_t2"
+data_merge <- as.data.frame(merge(data_merge,lookup_c,by="ID_LC2"))
+colnames(lookup_z)[1]="ZONE"
+colnames(lookup_z)[3]="Z_NAME"
+data_merge <- as.data.frame(merge(data_merge,lookup_z,by="ZONE"))
+data_merge <- as.data.frame(merge(data_merge,lookup_ref,by="REF"))
+data_merge$COUNT<-data_merge$COUNT*Spat_res
+data_merge$COUNT_ZONE<-data_merge$COUNT_ZONE*Spat_res
+#save crosstab
+original_data<-subset(data_merge, select=-c(CARBON_t1, CARBON_t2))
+eval(parse(text=(paste("write.dbf(original_data, 'lu.db_", pu_name ,"_", T1, "_", T2, ".dbf')", sep="")))) 
+rm(lu.db, original_data)
+#calculate area based on reference/administrative data
+refMelt<-melt(data = data_merge, id.vars=c('REF'), measure.vars=c('COUNT'))
+refArea<-dcast(data = refMelt, formula = REF ~ ., fun.aggregate = sum)
+
 #====Carbon Accounting Process====
 NAvalue(landuse1)<-raster.nodata
 NAvalue(landuse2)<-raster.nodata
-rcl.m.c1<-as.matrix(lookup_c[,1])
-rcl.m.c2<-as.matrix(lookup_c[,3])
+rcl.m.c1<-as.matrix(lookup_lc[,1])
+rcl.m.c2<-as.matrix(lookup_lc[,3])
 rcl.m<-cbind(rcl.m.c1,rcl.m.c2)
 carbon1<-reclassify(landuse1, rcl.m)
 carbon2<-reclassify(landuse2, rcl.m)
@@ -376,88 +423,7 @@ chk_sq<-carbon1<carbon2
 emission<-((carbon1-carbon2)*3.67)*chk_em
 sequestration<-((carbon2-carbon1)*3.67)*chk_sq
 
-#============================================in progress================================
-#===CHECK EXISTING RASTER BRICK OR CROSSTAB====
-setwd(LUMENS_temp_user)
-command1<-paste(command1,pu, sep="")
-eval(parse(text=(paste("pu_name<-names(",pu[1],")", sep=''))))
-check_lucdb<-FALSE
-eval(parse(text=(paste("check_crosstab<-file.exists('lu.db_", pu_name ,"_", T1, "_", T2, ".dbf')", sep="")))) 
-eval(parse(text=(paste("check_rbrick<-file.exists('r.brick_", pu_name ,"_", T1, "_", T2, ".grd')", sep=""))))  
-if(check_crosstab){
-  eval(parse(text=(paste("data_merge<-read.dbf('lu.db_", pu_name ,"_", T1, "_", T2, ".dbf')", sep="")))) 
-} else if(check_rbrick){
-  eval(parse(text=(paste("r.brick<-brick('r.brick_", pu_name ,"_", T1, "_", T2, ".grd')", sep=""))))
-  lu.db<-crosstab(r.brick,long=TRUE,useNA=FALSE,progress='-')
-  check_lucdb<-TRUE
-} else {
-  eval(parse(text=(paste("r.brick<-brick(", command1, ", filename='r.brick_",pu_name,"_",T1, "_", T2, "')", sep=""))))
-  lu.db<-crosstab(r.brick,long=TRUE,useNA=FALSE,progress='-')
-  check_lucdb<-TRUE
-}
-
-refStack<-brick(landuse1,landuse2, ref)
-refCross<-as.data.frame(crosstab(refStack,long=TRUE,useNA=FALSE,progress='-'))
-colnames(refCross)[1] ="ID_LC1"
-colnames(refCross)[2] = "ID_LC2"
-colnames(refCross)[3] = "ZONE"
-colnames(refCross)[4] = "COUNT"
-refCross$COUNT<-refCross$COUNT*Spat_res
-colnames(lookup_c)[1]="ID_LC1"
-colnames(lookup_c)[2]="LC_t1"
-colnames(lookup_c)[3]="CARBON_t1"
-refDB <- merge(refCross,lookup_c,by="ID_LC1")
-colnames(lookup_c)[1]="ID_LC2"
-colnames(lookup_c)[2]="LC_t2"
-colnames(lookup_c)[3]="CARBON_t2"
-refDB <- as.data.frame(merge(refDB,lookup_c,by="ID_LC2"))
-refDB <- as.data.frame(merge(refDB,lookup_ref,by="ZONE"))
-refMelt<-melt(data = refDB, id.vars=c('ZONE'), measure.vars=c('COUNT'))
-refArea<-dcast(data = refMelt, formula = ZONE ~ ., fun.aggregate = sum)
-
-if(check_lucdb) {
-  colnames(lu.db)[1] ="ID_LC1"
-  colnames(lu.db)[2] = "ID_LC2"
-  colnames(lu.db)[3] = "ZONE"
-  colnames(lu.db)[4] = "COUNT"
-  colnames(lookup_c)[1]="ID_LC1"
-  colnames(lookup_c)[2]="LC_t1"
-  colnames(lookup_c)[3]="CARBON_t1"
-  data_merge <- merge(lu.db,lookup_c,by="ID_LC1")
-  
-  colnames(lookup_c)[1]="ID_LC2"
-  colnames(lookup_c)[2]="LC_t2"
-  colnames(lookup_c)[3]="CARBON_t2"
-  data_merge <- as.data.frame(merge(data_merge,lookup_c,by="ID_LC2"))
-  
-  colnames(lookup_z)[1]="ZONE"
-  colnames(lookup_z)[2]="Z_NAME"
-  data_merge <- as.data.frame(merge(data_merge,lookup_z,by="ZONE"))
-  
-  original_data<-subset(data_merge, select=-c(CARBON_t1, CARBON_t2))
-  eval(parse(text=(paste("write.dbf(original_data, 'lu.db_", pu_name ,"_", T1, "_", T2, ".dbf')", sep="")))) 
-  rm(lu.db, original_data)
-} else {
-  carbon_table <- subset(lookup_lc, select=-LC)
-  colnames(carbon_table)[1]="ID_LC1"
-  colnames(carbon_table)[2]="CARBON_t1"
-  data_merge <- merge(data_merge,carbon_table,by="ID_LC1") 
-  colnames(carbon_table)[1]="ID_LC2"
-  colnames(carbon_table)[2]="CARBON_t2"
-  data_merge <- merge(data_merge,carbon_table,by="ID_LC2") 
-}
-
-#====Set Working Directory====
-QUESC.index<-QUESC.index+1
-dirQUESC<-paste(dirname(proj.file), "/QUES/QUES-C/QUESC_analysis_",pu_name,"_",data[1,2],"_",data[2,2], "_", QUESC.index, sep="")
-dir.create(dirQUESC, mode="0777")
-setwd(dirQUESC) 
-
 #===Modify Carbon Stock Density for Each Time Series====
-data_merge$CARBON_t1<-data_merge$CARBON_t1
-data_merge$CARBON_t2<-data_merge$CARBON_t2
-data_merge$COUNT<-data_merge$COUNT*Spat_res
-
 data_merge$ck_em<-data_merge$CARBON_t1>data_merge$CARBON_t2
 data_merge$ck_sq<-data_merge$CARBON_t1<data_merge$CARBON_t2
 data_merge$em<-(data_merge$CARBON_t1-data_merge$CARBON_t2)*data_merge$ck_em*data_merge$COUNT*3.67
@@ -480,8 +446,8 @@ area<-min(sum(area_zone$COUNT), sum(data_merge$COUNT))
 #====Generate administrative unit====
 colnames(refArea)[1]<-"ID"
 colnames(refArea)[2]<-"COUNT"
-colnames(p.admin.df)[1]<-"KABKOT"
-colnames(p.admin.df)[2]<-"ID"
+colnames(p.admin.df)[1]<-"ID"
+colnames(p.admin.df)[2]<-"KABKOT"
 area_admin<-merge(refArea, p.admin.df, by="ID")
 
 #====Calculate Emission for each Planning Unit====
@@ -493,6 +459,7 @@ colnames(zone_sequestration)[1] = "ID"
 colnames(zone_sequestration)[2]="Sq_tot"
 zone_emission<-merge(area_zone,zone_emission,by="ID")
 zone_carbon<-merge(zone_emission,zone_sequestration,by="ID")
+zone_carbon$COUNT_ZONE<-NULL
 zone_carbon$Net_em<-zone_carbon$Em_tot-zone_carbon$Sq_tot
 zone_carbon$Net_em_rate<-round((zone_carbon$Net_em/zone_carbon$COUNT/period), digits=3)
 zone_carbon$Sq_tot<-round(zone_carbon$Sq_tot, digits=3)
@@ -539,6 +506,7 @@ for(a in 1:lg){
   data_zone<-within(data_zone, {Rate_em<-ifelse(data_zone$ID == i, sum(data_z$em)/(sum(data_z$COUNT)*period),Rate_em)}) 
   data_zone<-within(data_zone, {Rate_seq<-ifelse(data_zone$ID == i, sum(data_z$sq)/(sum(data_z$COUNT)*period),Rate_seq)}) 
 }
+data_zone$COUNT_ZONE<-NULL
 data_zone[,5:8]<-round(data_zone[,5:8],digits=3)
 
 #====Calculate Largest Source of Emission====
@@ -832,7 +800,12 @@ for (i in 1:length(zone_lookup$ID)){
 
 #====Rearrange zone carbon====
 zone_carbon_pub<-zone_carbon
-colnames(zone_carbon_pub) <- c("ID", "Area (Ha)", "Land cover class", "Total emission (Ton CO2/Ha)", "Total sequestration(Ton CO2/Ha)", "Net emission (Ton CO2/Ha)", "Emission rate (Ton CO2/Ha.yr)")
+colnames(zone_carbon_pub) <- c("ID", "Luas (Ha)", "Tutupan lahan", "Total emisi (Ton CO2/Ha)", "Total sekuestrasi(Ton CO2/Ha)", "Emisi bersih (Ton CO2/Ha)", "Laju emisi (Ton CO2/Ha.yr)")
+admin_carbon_pub<-admin_carbon
+colnames(admin_carbon_pub) <- c("ID", "Luas (Ha)", "Wil. Administratif", "Total emisi (Ton CO2/Ha)", "Total sekuestrasi(Ton CO2/Ha)", "Emisi bersih (Ton CO2/Ha)", "Laju emisi (Ton CO2/Ha.yr)")
+data_zone_pub<-data_zone
+data_zone_pub$Z_CODE<-NULL
+colnames(data_zone_pub) <- c("ID", "Luas (Ha)", "Unit Perencanaan", "Rerata Karbon Periode 1", "Rerata Karbon Periode 1", "Emisi bersih", "Laju emisi")
 
 #====Create Map for report====
 myColors1 <- brewer.pal(9,"Set1")
@@ -844,8 +817,6 @@ myColors6 <- brewer.pal(8, "Dark2")
 myColors7 <- brewer.pal(11, "Spectral")
 myColors8 <- rev(brewer.pal(11, "RdYlGn"))
 myColors  <-c(myColors8,myColors5,myColors1, myColors2, myColors3, myColors4, myColors7, myColors8)
-
-
 
 #====Landuse 1 map====
 myColors.lu <- myColors[1:length(unique(lookup_lc$ID))]
@@ -885,7 +856,6 @@ plot.LU2<-gplot(landuse2, maxpixels=100000) + geom_raster(aes(fill=as.factor(val
 
 myColors  <-c(myColors5,myColors1, myColors2, myColors3, myColors4, myColors7, myColors6, myColors8)
 
-
 #====zone map====
 myColors.Z <- myColors[1:length(unique(lookup_z$ID))]
 ColScale.Z<-scale_fill_manual(name="Kelas Unit Perencanaan", breaks=lookup_z$ID, labels=lookup_z$Z_NAME, values=myColors.Z)
@@ -913,6 +883,7 @@ plot.Admin<-gplot(ref, maxpixels=100000) + geom_raster(aes(fill=as.factor(value)
          legend.key.width = unit(0.25, "cm"))
 
 rm(myColors7,myColors1, myColors2, myColors3, myColors4, myColors5, myColors6,myColors8)
+
 #====Average Zonal Carbon Rate t1====
 rcl.m.c1<-as.matrix(data_zone[,1])
 rcl.m.c2<-as.matrix(data_zone[,5])
@@ -1066,7 +1037,7 @@ tabel_ket[4,1]<-"Wilayah Analisis"
 tabel_ket[5,1]<-"Provinsi"
 tabel_ket[6,1]<-"Negara"
 
-#====Create RTF Report File====
+#====Write Report====
 title1<-"{\\colortbl;\\red0\\green0\\blue0;\\red255\\green0\\blue0;\\red146\\green208\\blue80;\\red0\\green176\\blue240;\\red140\\green175\\blue71;\\red0\\green112\\blue192;\\red79\\green98\\blue40;} \\pard\\qr\\b\\fs70\\cf2 L\\cf3U\\cf4M\\cf5E\\cf6N\\cf7S \\cf1HASIL ANALISIS \\par\\b0\\fs20\\ql\\cf1"
 title2<-paste("\\pard\\qr\\b\\fs40\\cf1 Modul QUES-C - Analisis Dinamika Cadangan Karbon \\par\\b0\\fs20\\ql\\cf1", sep="")
 sub_title<-"\\cf2\\b\\fs32 ANALISIS DINAMIKA CADANGAN KARBON\\cf1\\b0\\fs20"
@@ -1198,24 +1169,24 @@ addNewLine(rtffile, n=1)
 
 addParagraph(rtffile, "\\b \\fs20 Intisari perhitungan emisi per unit perencanaan\\b0 \\fs20")
 addNewLine(rtffile, n=1)
-data_zone[2]<-printArea(data_zone[2])
-addTable(rtffile, data_zone)
+data_zone_pub[2]<-printArea(data_zone_pub[2])
+addTable(rtffile, data_zone_pub)
 addNewLine(rtffile, n=1)
 
 addNewLine(rtffile, n=1)
-zone_carbon[2]<-printArea(zone_carbon[2])
-zone_carbon[4]<-printRate(zone_carbon[4])
-zone_carbon[5]<-printRate(zone_carbon[5])
-zone_carbon[6]<-printRate(zone_carbon[6])
-addTable(rtffile, zone_carbon)
+zone_carbon_pub[2]<-printArea(zone_carbon_pub[2])
+zone_carbon_pub[4]<-printRate(zone_carbon_pub[4])
+zone_carbon_pub[5]<-printRate(zone_carbon_pub[5])
+zone_carbon_pub[6]<-printRate(zone_carbon_pub[6])
+addTable(rtffile, zone_carbon_pub)
 addNewLine(rtffile, n=1)
 addParagraph(rtffile, "\\b \\fs20 Intisari perhitungan emisi per wilayah administrasi\\b0 \\fs20")
 addNewLine(rtffile, n=1)
-admin_carbon[2]<-printArea(admin_carbon[2])
-admin_carbon[4]<-printRate(admin_carbon[4])
-admin_carbon[5]<-printRate(admin_carbon[5])
-admin_carbon[6]<-printRate(admin_carbon[6])
-addTable(rtffile, admin_carbon)
+admin_carbon_pub[2]<-printArea(admin_carbon_pub[2])
+admin_carbon_pub[4]<-printRate(admin_carbon_pub[4])
+admin_carbon_pub[5]<-printRate(admin_carbon_pub[5])
+admin_carbon_pub[6]<-printRate(admin_carbon_pub[6])
+addTable(rtffile, admin_carbon_pub)
 addParagraph(rtffile, "Keterangan : ")
 addParagraph(rtffile, "Em_tot = Total Emisi dalam ton CO2-eq ")
 addParagraph(rtffile, "Sq_tot = Total Sequestrasi dalam ton CO2-eq ")
@@ -1346,9 +1317,10 @@ rm(largestE.Z, largestS.Z)
 addNewLine(rtffile)
 done(rtffile)
 
-eval(parse(text=(paste("rtffileQUESC_", check_record, " <- rtffile", sep=""))))
-eval(parse(text=(paste("QUESC_database_", pu_name, "_", data[1,2], "_", data[2,2], " <- data_merge", sep=""))))
-eval(parse(text=(paste("resave(rtffileQUESC_", check_record, ",run_record, QUESC_database_", pu_name, "_", data[1,2], "_", data[2,2], ", QUESC.index,lut.c, file=proj.file)", sep=""))))
+#eval(parse(text=(paste("rtffileQUESC_", check_record, " <- rtffile", sep=""))))
+eval(parse(text=(paste("QUESC_database_", pu_name, "_", T1, "_", T2, " <- data_merge", sep=""))))
+#eval(parse(text=(paste("resave(rtffileQUESC_", check_record, ",run_record, QUESC_database_", pu_name, "_", data[1,2], "_", data[2,2], ", QUESC.index,lut.c, file=proj.file)", sep=""))))
+eval(parse(text=(paste("resave(QUESC_database_", pu_name, "_", T1, "_", T2, ", QUESC.index, file=proj.file)", sep=""))))
 
 command<-paste("start ", "winword ", dirQUESC, "/LUMENS_QUES-C_report.lpr", sep="" )
 shell(command)

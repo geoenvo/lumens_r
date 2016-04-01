@@ -149,11 +149,13 @@ if (data_pu$RST_DATA=="ref") {
   zone<-ref
   get_from_rdb(symbol=paste(data_pu$LUT_NAME), filebase=paste(data_dir, "planning_unit", sep=""))
   lookup_z<-p.admin.df
+  colnames(lookup_z)<-c("ID", "ZONE")
 } else {
   get_from_rdb(symbol=paste(data_pu$RST_DATA), filebase=paste(data_dir, "planning_unit", sep=""))
   eval(parse(text=(paste("zone<-", data_pu$RST_DATA, sep=""))))  
   get_from_rdb(symbol=paste(data_pu$LUT_NAME), filebase=paste(data_dir, "planning_unit", sep=""))
   eval(parse(text=(paste("lookup_z<-", data_pu$LUT_NAME, sep=""))))  
+  colnames(lookup_z)<-c("ID", "COUNT_ZONE", "ZONE")
 }
 #landuse first period
 get_from_rdb(symbol=paste(data_luc1$RST_DATA), filebase=paste(data_dir, "land_use_cover", sep=""))
@@ -172,7 +174,6 @@ lookup_l<-lut.lc
 lookup_lc<-lut.lc
 colnames(lookup_l)<-c("ID", "CLASS")
 colnames(lookup_lc)<-c("ID", "CLASS")
-colnames(lookup_z)<-c("ID", "COUNT_ZONE", "ZONE")
 
 #====Projection handling====
 if (grepl("+units=m", as.character(ref@crs))){
