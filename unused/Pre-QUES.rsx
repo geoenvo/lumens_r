@@ -1,9 +1,17 @@
 ##[QUES]=group
-##lookup_lc=file
+##landuse_1=string
+##landuse_2=string
+##planning_unit=string
+##lookup_lc=string
 ##raster.nodata=number 0
 
+landuse_1="LC1990"
+landuse_2="LC2000"
+planning_unit="kawasan.2"
+lookup_lc="landcover"
+raster.nodata=0
+
 library(foreign)
-library(raster)
 library(rasterVis)
 library(reshape2)
 library(plyr)
@@ -19,6 +27,11 @@ library(tcltk)
 
 time_start<-paste(eval(parse(text=(paste("Sys.time ()")))), sep="")
 
+#CREATE FUNCTION TO GET OBJECT FROM RDB
+get_from_rdb <- function(symbol, filebase, envir =parent.frame()){
+  lazyLoad(filebase = filebase, envir = envir, filter = function(x) x == symbol)
+}
+
 #READ LUMENS LOG FILE
 user_temp_folder<-Sys.getenv("TEMP")
 if(user_temp_folder=="") {
@@ -29,110 +42,24 @@ log.file<-read.table(LUMENS_path_user, header=FALSE, sep=",")
 proj.file<-paste(log.file[1,1], "/", log.file[1,2],"/",log.file[1,2], ".lpj", sep="")
 load(proj.file)
 
-#====READ LANDUSE DATA FROM LUMENS DATABASE====
-per<-as.data.frame(ls(pattern="freq"))
-n<-nrow(per)
-data<-per
-data.y<-NULL
-for (q in 1:n) {
-  data.x<-substr(as.character(factor(data[q,1])), 5, 14)
-  data.y<-c(data.y,data.x)
-  
-}
-data<-as.data.frame(data.y)
+#SET PATH OF DATA DIRECTORY 
+data_dir<-paste(dirname(proj.file), "/DATA/", sep="")
+setwd(data_dir)
 
-n<-nrow(data)
-command1<-NULL
-command2<-NULL
-for(i in 1:n) {
-  if (i!=n){
-    command1<-paste(command1,"period", i, ",", sep="")
-    command2<-paste(command2,"landuse_t", i, ",", sep="")
-  } else {
-    command1<-paste(command1,"period", i, sep="")
-    command2<-paste(command2,"landuse_t", i, sep="")
-  }
-}
+get_from_rdb(symbol=paste("list_of_data_luc"), filebase=paste(data_dir, "land_use_cover", sep=""))
+get_from_rdb(symbol=paste("list_of_data_pu"), filebase=paste(data_dir, "planning_unit", sep=""))
+get_from_rdb(symbol=paste("list_of_data_lut"), filebase=paste(data_dir, "lookup_table", sep=""))
 
-#if pu is not exist, use p.admin.df as planning unit reference
-data2<-as.data.frame(as.character(ls(pattern="pu_pu")))
-if (nrow(data2)==0) {
-  pu_pu1<-ref
-  pu_pu1[pu_pu1==0]<-NA
-  lut.pu<-p.admin.df[2]
-  lut.pu[2]<-p.admin.df[1]
-}
-data2<-as.data.frame(as.character(ls(pattern="pu_pu")))
+data_luc1<-list_of_data_luc[which(list_of_data_luc$RST_NAME==landuse_1),]
+data_luc2<-list_of_data_luc[which(list_of_data_luc$RST_NAME==landuse_2),]
+data_pu<-list_of_data_pu[which(list_of_data_pu$RST_NAME==planning_unit),]
+data_lut<-list_of_data_lut[which(list_of_data_lut$TBL_NAME==lookup_lc),]
 
-n<-nrow(data2)
-command3<-NULL
-for(i in 1:n) {
-  if (i!=n){
-    command3a<-eval(parse(text=(paste( "names(pu_pu", i, ")", sep=""))))
-    command3<-c(command3,command3a)
-  } else {
-    command3a<-eval(parse(text=(paste( "names(pu_pu", i, ")", sep=""))))
-    command3<-c(command3,command3a)
-  }
-}
+T1<-data_luc1$PERIOD
+T2<-data_luc2$PERIOD
 
-rr<-nrow(per)
-command4<-NULL
-for(i in 1:rr) {
-  if (i!=rr){
-    command4<-paste(command4,"freqLanduse_", i, ",", sep="")
-  } else {
-    command4<-paste(command4,"freqLanduse_", i, sep="")
-  }
-}
-#end create command
-
-#====SELECT DATA TO BE ANALYZED====
-eval(parse(text=(paste("year<-c(", command1, ")", sep=""))))
-data<-as.data.frame(cbind(data,year))
-data$t1<-0
-data$t2<-0
-colnames(data)[1]<-"data"
-data$data<-as.character(data$data)
-data3<-data
-a<-nrow(data3)
-repeat{
-  data<-edit(data)
-  if(sum(data$t1)==1 & sum(data$t2)==1){
-    break
-  }
-}
-data$sum<-data$t1+data$t2
-data <- data[which(data$sum==1),]
-
-data$t1<-NULL
-data$t2<-NULL
-data$sum<-NULL
-
-n<-nrow(data)
-command1<-NULL
-T1<-data[1,2]
-T2<-data[2,2]
-
-#====SELECT PLANNING UNIT TO BE ANALYZED====
-data2<-as.data.frame(cbind(data2,command3))
-data2$usage<-0
-colnames(data2)[1]<-"data"
-colnames(data2)[2]<-"sources"
-data2$data<-as.character(data2$data)
-
-repeat{
-  data2<-edit(data2)
-  if(sum(data2$usage)==1){
-    break
-  }
-}
-
-data2 <- data2[which(data2$usage==1),]
-data2$usage<-NULL
-pu<-as.character(data2[1,1])
-
-#wd
+#SET WORKING DIRECTORY
+PreQUES.index=PreQUES.index+1
 preques_folder<-paste("PreQUES_analysis_", T1,"_",T2,"_",PreQUES.index,sep="")
 result_dir<-paste(dirname(proj.file),"/QUES/PreQUES/", sep="")
 setwd(result_dir)
@@ -154,9 +81,23 @@ proj_prop$period <- do.call(paste, c(proj_prop[c("Year_T1", "Year_T2")], sep = "
 proj_period<-do.call(paste, c(proj_prop[c("Year_T1", "Year_T2")], sep = " - "))
 
 #load datasets
-landuse1 <- eval(parse(text=(paste(data[1,1], sep=""))))
-landuse2 <- eval(parse(text=(paste(data[2,1], sep=""))))
-zone <- eval(parse(text=(paste(pu, sep=""))))
+if (data_pu$RST_DATA=="ref") {
+  get_from_rdb(symbol=paste(data_pu$RST_DATA), filebase=paste(data_dir, "planning_unit", sep=""))
+  ref[ref==0]<-NA
+  zone<-ref
+  get_from_rdb(symbol=paste(data_pu$LUT_NAME), filebase=paste(data_dir, "planning_unit", sep=""))
+  lookup_z<-p.admin.df[2]
+  lookup_z[2]<-p.admin.df[1]
+} else {
+  get_from_rdb(symbol=paste(data_pu$RST_DATA), filebase=paste(data_dir, "planning_unit", sep=""))
+  eval(parse(text=(paste("zone<-", data_pu$RST_DATA, sep=""))))  
+  get_from_rdb(symbol=paste(data_pu$LUT_NAME), filebase=paste(data_dir, "planning_unit", sep=""))
+  eval(parse(text=(paste("lookup_z<-", data_pu$LUT_NAME, sep=""))))  
+}
+get_from_rdb(symbol=paste(data_luc1$RST_DATA), filebase=paste(data_dir, "land_use_cover", sep=""))
+eval(parse(text=(paste("landuse1<-", data_luc1$RST_DATA, sep=""))))
+get_from_rdb(symbol=paste(data_luc2$RST_DATA), filebase=paste(data_dir, "land_use_cover", sep=""))
+eval(parse(text=(paste("landuse2<-", data_luc2$RST_DATA, sep=""))))
 
 NAvalue(landuse1)<-raster.nodata
 NAvalue(landuse2)<-raster.nodata
@@ -217,52 +158,53 @@ if (as.character(landuse1@crs)==as.character(zone@crs)){
 }
 
 #load look up table
-lookup_lc2<-lookup_lc
-lookup_l<- read.table(lookup_lc, header=TRUE, sep=",",)
-lookup_z <- lut.pu
-lookup_lc<- read.table(lookup_lc, header=TRUE, sep=",",)
+get_from_rdb(symbol=paste(data_lut$TBL_DATA), filebase=paste(data_dir, "lookup_table", sep=""))
+eval(parse(text=(paste("lookup_lc<-", data_lut$TBL_DATA, sep=""))))
+lookup_l<- lookup_lc
 colnames(lookup_l)<-c("ID", "CLASS")
 colnames(lookup_lc)<-c("ID", "CLASS")
 colnames(lookup_z)<-c("ID", "ZONE")
 
-#set raster attribute table (RAT)
-#landuse1<-ratify(landuse1, filename='landuse1.grd',count=TRUE,overwrite=TRUE)
-#landuse2<-ratify(landuse2, filename='landuse2.grd',count=TRUE,overwrite=TRUE)
-#zone<-ratify(zone, filename='ratify.grd',count=TRUE,overwrite=TRUE)
+# get_from_rdb(symbol=paste(data_luc1$LUT_NAME), filebase=paste(data_dir, "land_use_cover", sep=""))
+# eval(parse(text=(paste("area_lc1<-", data_luc1$LUT_NAME, sep=""))))
+# get_from_rdb(symbol=paste(data_luc2$LUT_NAME), filebase=paste(data_dir, "land_use_cover", sep=""))
+# eval(parse(text=(paste("area_lc2<-", data_luc2$LUT_NAME, sep=""))))
 
-#create land use change database
-#area_lc1<-as.data.frame(levels(landuse1))
-#area_lc2<-as.data.frame(levels(landuse2))
-#area_zone<-as.data.frame(levels(zone))
-eval(parse(text=(paste("area_lc1<-freq", data[1,1], sep=""))))
-eval(parse(text=(paste("area_lc2<-freq", data[2,1], sep=""))))
-eval(parse(text=(paste("area_zone<-as.data.frame(freq(", pu,"))", sep=""))))
-area_lc1$count<-area_lc1$count*Spat_res
-area_lc2$count<-area_lc2$count*Spat_res
-area_zone$count<-area_zone$count*Spat_res
-area<-min(sum(area_zone[,2]), sum(area_lc1[,2]), sum(area_lc2[,2]))
-colnames(area_lc1)[1] = "ID"
-colnames(area_lc1)[2] = "COUNT_LC1"
-colnames(area_lc2)[1] = "ID"
-colnames(area_lc2)[2] = "COUNT_LC2"
-colnames(area_zone)[1] = "ID"
-colnames(area_zone)[2] = "COUNT_ZONE"
+# area_zone<-as.data.frame(freq(zone))
+# area_lc1$count<-area_lc1$count*Spat_res
+# area_lc2$count<-area_lc2$count*Spat_res
+# area_zone$count<-area_zone$count*Spat_res
+# area<-min(sum(area_zone[,2]), sum(area_lc1[,2]), sum(area_lc2[,2]))
+# colnames(area_lc1)[1] = "ID"
+# colnames(area_lc1)[2] = "COUNT_LC1"
+# colnames(area_lc2)[1] = "ID"
+# colnames(area_lc2)[2] = "COUNT_LC2"
+# colnames(area_zone)[1] = "ID"
+# colnames(area_zone)[2] = "COUNT_ZONE"
+# area_lc1<-merge(area_lc1,lookup_l,by="ID")
+# area_lc2<-merge(area_lc2,lookup_l,by="ID")
+# area_zone<-merge(area_zone,lookup_z,by="ID")
+# colnames(area_lc1)[3] = "CLASS_LC1"
+# colnames(area_lc2)[3] = "CLASS_LC2"
 
-area_lc1<-merge(area_lc1,lookup_l,by="ID")
-area_lc2<-merge(area_lc2,lookup_l,by="ID")
-area_zone<-merge(area_zone,lookup_z,by="ID")
-#area_lc1<-as.data.frame(levels(landuse1))
-#area_lc2<-as.data.frame(levels(landuse2))
-#area_zone<-as.data.frame(levels(zone))
-#colnames(area_lc1)[2] = "COUNT_LC1"
-colnames(area_lc1)[3] = "CLASS_LC1"
-#colnames(area_lc2)[2] = "COUNT_LC2"
-colnames(area_lc2)[3] = "CLASS_LC2"
-cross <- as.data.frame(crosstab((stack(landuse1,landuse2,zone))))
-colnames(cross)[1] ="ID_LC1"
-colnames(cross)[2] = "ID_LC2"
+R<-(zone*1) + (landuse1*100^1) + (landuse2*100^2)
+cross<-as.data.frame(freq(R))
+cross<-na.omit(cross)
+n<-3
+k<-0
+cross$value_temp<-cross$value
+while(k < n) {
+  eval(parse(text=(paste("cross$Var", n-k, "<-cross$value_temp %% 100", sep=""))))  
+  cross$value_temp<-floor(cross$value_temp/100)
+  k=k+1
+}
+cross$value_temp<-NULL
+
+colnames(cross)[1] ="ID_CHG"
+colnames(cross)[2] = "COUNT"
 colnames(cross)[3] = "ZONE"
-colnames(cross)[4] = "COUNT"
+colnames(cross)[4] = "ID_LC1"
+colnames(cross)[5] = "ID_LC2"
 cross$COUNT<-cross$COUNT*Spat_res
 colnames(lookup_l)[1]="ID_LC1"
 colnames(lookup_l)[2]="LC_t1"
@@ -343,7 +285,19 @@ Ov_chg.melt <- melt(data = Ov_chg, id.vars=c('Land_use_type',"LU_CODE"), measure
 colnames(Ov_chg.melt)<-c("Land_use_type","LU_CODE", "Year", "Area")
 
 #create land use change map
-cross_temp<-as.data.frame(crosstab(landuse1,landuse2))
+S<-(landuse1*1) + (landuse2*100^1)
+cross_temp<-as.data.frame(freq(S))
+cross_temp<-na.omit(cross_temp)
+n<-2
+k<-0
+cross_temp$value_temp<-cross_temp$value
+while(k < n) {
+  eval(parse(text=(paste("cross_temp$Var", n-k, "<-cross_temp$value_temp %% 100", sep=""))))  
+  freqS$value_temp<-floor(cross_temp$value_temp/100)
+  k=k+1
+}
+cross_temp$value_temp<-NULL
+
 colnames(cross_temp)[1] = "Var1"
 colnames(cross_temp)[2] = "Var2"
 cross_temp$Freq<-cross_temp$Freq*Spat_res
@@ -404,7 +358,6 @@ writeRaster(luchg, filename="lulcc_map.tif", format="GTiff", overwrite=TRUE)
 write.dbf(luchg_att, "lulcc_map.dbf")
 
 #====database export====
-PreQUES.index=PreQUES.index+1
 resave(PreQUES.index, file=proj.file)
 
 #Create Map for report
