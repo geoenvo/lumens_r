@@ -40,7 +40,6 @@ load(proj.file)
 
 #SET PATH OF DATA DIRECTORY 
 data_dir<-paste(dirname(proj.file), "/DATA/", sep="")
-#setwd(data_dir)
 
 get_from_rdb(symbol=paste("list_of_data_luc"), filebase=paste(data_dir, "land_use_cover", sep=""))
 get_from_rdb(symbol=paste("list_of_data_pu"), filebase=paste(data_dir, "planning_unit", sep=""))
@@ -1320,8 +1319,23 @@ done(rtffile)
 
 #eval(parse(text=(paste("rtffileQUESC_", check_record, " <- rtffile", sep=""))))
 eval(parse(text=(paste("QUESC_database_", pu_name, "_", T1, "_", T2, " <- data_merge", sep=""))))
-#eval(parse(text=(paste("resave(rtffileQUESC_", check_record, ",run_record, QUESC_database_", pu_name, "_", data[1,2], "_", data[2,2], ", QUESC.index,lut.c, file=proj.file)", sep=""))))
-eval(parse(text=(paste("resave(QUESC_database_", pu_name, "_", T1, "_", T2, ", QUESC.index, file=proj.file)", sep=""))))
+#eval(parse(text=(paste("resave(rtffileQUESC_", check_record, ",run_record, QUESC_database_", pu_name, "_", T1, "_", T2, ", QUESC.index,lut.c, file=proj.file)", sep=""))))
+
+lut.index=lut.index+1
+resave(QUESC.index, lut.index, file=proj.file)
+#save in rdata
+
+#make lazyLoad database
+eval(parse(text=(paste("add_data<-data.frame(TBL_DATA='lut", lut.index,"', TBL_NAME='QUESC_database_", pu_name, "_", T1, "_", T2, "', row.names=NULL)", sep=""))))
+list_of_data_lut<-rbind(list_of_data_lut,add_data)
+write.table(list_of_data_lut, csv_file, quote=FALSE, row.names=FALSE, sep=",")
+
+setwd(data_dir)
+category<-"lookup_table"
+resave(list_of_data_lut, file=category)
+
+e = local({load(category); environment()})
+tools:::makeLazyLoadDB(e, category)
 
 command<-paste("start ", "winword ", dirQUESC, "/LUMENS_QUES-C_report.lpr", sep="" )
 shell(command)
