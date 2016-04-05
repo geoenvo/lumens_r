@@ -196,9 +196,8 @@ if (grepl("+units=m", as.character(ref@crs))){
 #===Set working directory====
 PreQUES.index<-PreQUES.index+1
 preques_folder<-paste("PreQUES_analysis_",pu_name,"_" ,T1,"_",T2,"_",PreQUES.index,sep="")
-result_dir<-paste(dirname(proj.file),"/QUES/PreQUES/", sep="")
-dir.create(preques_folder)
-result_dir<-paste(result_dir,preques_folder, sep='')
+result_dir<-paste(dirname(proj.file),"/QUES/PreQUES/", preques_folder, sep="")
+dir.create(result_dir)
 setwd(result_dir)
 
 #==CHECK EXISTING RASTER BRICK OR CROSSTAB===
@@ -596,7 +595,6 @@ if (0 %in% area_zone$ID){
 }
 
 #zone map
-eval(parse(text=(paste("zone<-", pu, sep=""))))
 myColors.Z <- myColors[1:length(unique(area_zone$ID))]
 ColScale.Z<-scale_fill_manual(name="Unit perencanaan", breaks=area_zone$ID, labels=area_zone$ZONE, values=myColors.Z)
 plot.Z<-gplot(zone, maxpixels=100000) + geom_raster(aes(fill=as.factor(value))) +
@@ -610,6 +608,43 @@ plot.Z<-gplot(zone, maxpixels=100000) + geom_raster(aes(fill=as.factor(value))) 
          legend.key.width = unit(0.25, "cm"))
 
 #rm(myColors8, myColors7,myColors1, myColors2, myColors3, myColors4, myColors5, myColors6, myColors9)
+
+if (0 %in% lookup_l$ID){
+  myColors  <-c(myColors8, myColors7,myColors1, myColors2, myColors3, myColors4, myColors5, myColors6)
+} else {
+  myColors  <-c(myColors7,myColors1, myColors2, myColors3, myColors4, myColors5, myColors6)
+}
+myColors.lu <- myColors[1:length(unique(lookup_l$ID))]
+#Land cover map 1
+area_lcmap<-subset(area_lc1, select=c("ID", "COUNT_LC1"))
+colnames(lookup_l)[1]<-"ID"
+area_lcmap<-merge(area_lcmap,lookup_l,by="ID")
+colnames(area_lcmap)[3] = "CLASS_LC1"
+ColScale.lu<-scale_fill_manual(name="Jenis tutupan lahan", breaks=area_lcmap$ID, labels=area_lcmap$CLASS_LC1, values=myColors.lu)
+plot.LU1<-gplot(landuse1, maxpixels=100000) + geom_raster(aes(fill=as.factor(value))) +
+  coord_equal() + ColScale.lu +
+  theme(plot.title = element_text(lineheight= 5, face="bold")) +
+  theme( axis.title.x=element_blank(),axis.title.y=element_blank(),
+         panel.grid.major=element_blank(), panel.grid.minor=element_blank(),
+         legend.title = element_text(size=8),
+         legend.text = element_text(size = 6),
+         legend.key.height = unit(0.25, "cm"),
+         legend.key.width = unit(0.25, "cm"))
+#Land cover map 2
+area_lcmap<-subset(area_lc2, select=c("ID", "COUNT_LC2"))
+colnames(lookup_l)[1]<-"ID"
+area_lcmap<-merge(area_lcmap,lookup_l,by="ID")
+colnames(area_lcmap)[3] = "CLASS_LC2"
+ColScale.lu<-scale_fill_manual(name="Jenis tutupan lahan", breaks=area_lcmap$ID, labels=area_lcmap$CLASS_LC2, values=myColors.lu)
+plot.LU2<-gplot(landuse2, maxpixels=100000) + geom_raster(aes(fill=as.factor(value))) +
+  coord_equal() + ColScale.lu +
+  theme(plot.title = element_text(lineheight= 5, face="bold")) +
+  theme( axis.title.x=element_blank(),axis.title.y=element_blank(),
+         panel.grid.major=element_blank(), panel.grid.minor=element_blank(),
+         legend.title = element_text(size=8),
+         legend.text = element_text(size = 6),
+         legend.key.height = unit(0.25, "cm"),
+         legend.key.width = unit(0.25, "cm"))
 
 #Largest Source of Change in Landuse
 colnames(chg_only_top)[3]<-"COUNT"
@@ -684,40 +719,18 @@ addParagraph(rtffile, "Data yang digunakan dalam analisa ini adalah data peta pe
 addNewLine(rtffile)
 #addTable(rtffile,test3,font.size=8)
 #addNewLine(rtffile)
-for(q in 1:n){
-  tryCatch({
-    eval(parse(text=(paste("landusemap<-", data[ q, 1], sep=""))))
-    eval(parse(text=(paste("area_lcmap<-as.data.frame(freq", data[q, 1],")", sep=""))))
-    colnames(area_lcmap)[1] = "ID"
-    colnames(area_lcmap)[2] = "COUNT_LC1"
-    colnames(lookup_l)[1]<-"ID"
-    area_lcmap<-merge(area_lcmap,lookup_l,by="ID")
-    colnames(area_lcmap)[3] = "CLASS_LC1"
-    if (0 %in% area_lcmap$ID){
-      myColors  <-c(myColors8, myColors7,myColors1, myColors2, myColors3, myColors4, myColors5, myColors6)
-    } else {
-      myColors  <-c(myColors7,myColors1, myColors2, myColors3, myColors4, myColors5, myColors6)
-    }
-    myColors.lu <- myColors[1:length(unique(area_lcmap$ID))]
-    periodmap<-eval(parse(text=(paste("T",q, sep="" ))))
-    addParagraph(rtffile, paste("\\b \\fs20 Peta Tutupan Lahan ", location, " tahun ", periodmap," \\b0 \\fs20", sep=""))
-    addNewLine(rtffile, n=1)
-    #Land cover map
-    ColScale.lu<-scale_fill_manual(name="Jenis tutupan lahan", breaks=area_lcmap$ID, labels=area_lcmap$CLASS_LC1, values=myColors.lu)
-    plot.LU<-gplot(landusemap, maxpixels=100000) + geom_raster(aes(fill=as.factor(value))) +
-      coord_equal() + ColScale.lu +
-      theme(plot.title = element_text(lineheight= 5, face="bold")) +
-      theme( axis.title.x=element_blank(),axis.title.y=element_blank(),
-             panel.grid.major=element_blank(), panel.grid.minor=element_blank(),
-             legend.title = element_text(size=8),
-             legend.text = element_text(size = 6),
-             legend.key.height = unit(0.25, "cm"),
-             legend.key.width = unit(0.25, "cm"))
-    
-    addPlot.RTF(rtffile, plot.fun=plot, width=6.7, height=3, res=150, plot.LU )
-    addNewLine(rtffile, n=1)
-  },error=function(e){cat("Nice try pal! ~ please re-check your input data :",conditionMessage(e), "\n"); addParagraph(rtffile, "no data");addNewLine(rtffile)})
-}
+addParagraph(rtffile, paste("\\b \\fs20 Peta Tutupan Lahan ", location, " tahun ", T1," \\b0 \\fs20", sep=""))
+addNewLine(rtffile, n=1)
+tryCatch({
+  addPlot.RTF(rtffile, plot.fun=plot, width=6.7, height=3, res=150, plot.LU1 )
+  addNewLine(rtffile, n=1)
+},error=function(e){cat("Nice try pal! ~ please re-check your input data :",conditionMessage(e), "\n"); addParagraph(rtffile, "no data");addNewLine(rtffile)})
+addParagraph(rtffile, paste("\\b \\fs20 Peta Tutupan Lahan ", location, " tahun ", T2," \\b0 \\fs20", sep=""))
+addNewLine(rtffile, n=1)
+tryCatch({
+  addPlot.RTF(rtffile, plot.fun=plot, width=6.7, height=3, res=150, plot.LU2 )
+  addNewLine(rtffile, n=1)
+},error=function(e){cat("Nice try pal! ~ please re-check your input data :",conditionMessage(e), "\n"); addParagraph(rtffile, "no data");addNewLine(rtffile)})
 addNewLine(rtffile)
 addParagraph(rtffile, paste("\\b \\fs20 Peta Unit Perencanaan "," \\b0 \\fs20", sep=""))                                                                                                                                                                                                                                                                                                                                                                                                                           
 addNewLine(rtffile)
