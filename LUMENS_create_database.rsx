@@ -1,18 +1,17 @@
 ##Alpha - DATABASE=group
-##working_directory=folder
 ##project=string (enter name of the project)
+##working_directory=folder
+##description=string
 ##location=string (enter location)
 ##province=string (enter province name of your location)
 ##country=string (enter country name)
-##description=string
-##data=raster
 ##admin_attribute=vector
 ##field_attribute=field admin_attribute
+##spat_res=number 50
 ##dissolve_table=file
 ##statusoutput=output table
 
-time_start<-paste(eval(parse(text=(paste("Sys.time ()")))), sep="")
-
+#=Load library
 library(rtf)
 library(rasterVis)
 library(ggplot2)
@@ -20,8 +19,12 @@ library(RColorBrewer)
 library(stringr)
 library(rgeos)
 library(grid)
+library(jsonlite)
 
-#build LUMENS project folder structure
+#=Set time start
+time_start<-paste(eval(parse(text=(paste("Sys.time ()")))), sep="")
+
+#=Create structure folder for LUMENS project 
 setwd(working_directory)
 project<-str_replace_all(string=project, pattern=" ", repl="_")
 LUMENS_path <- paste(working_directory, "/", project, sep="")
@@ -34,8 +37,7 @@ QUESH_path <- paste(QUES_path, "/QUES-H", sep="")
 TA_path <- paste(LUMENS_path, "/TA", sep="")
 SCIENDO_path  <- paste(LUMENS_path, "/SCIENDO", sep="")
 DATA_path  <- paste(LUMENS_path, "/DATA", sep="")
-help_path  <- paste(LUMENS_path, "/help", sep="")
-
+#help_path  <- paste(LUMENS_path, "/help", sep="")
 dir.create(LUMENS_path, mode="0777")
 dir.create(PUR_path, mode="0777")
 dir.create(QUES_path, mode="0777")
@@ -46,9 +48,9 @@ dir.create(QUESH_path, mode="0777")
 dir.create(TA_path, mode="0777")
 dir.create(SCIENDO_path, mode="0777")
 dir.create(DATA_path, mode="0777")
-dir.create(help_path, mode="0777")
+#dir.create(help_path, mode="0777")
 
-#create LUMENS.log
+#=Create LUMENS.log with saving some parameters (working directory, project name, and time start) 
 user_temp_folder<-Sys.getenv("TEMP")
 if(user_temp_folder=="") {
   user_temp_folder<-Sys.getenv("TMP")
@@ -59,7 +61,47 @@ sink(paste(LUMENS_path_user, "/LUMENS.log", sep=""))
 cat(working_directory, project, time_start, sep=",")
 sink()
 
-#WRITE PROJECT PROPERTIES
+#=Set reference data
+# save as temporary data to DATA directory
+setwd(DATA_path)
+writeOGR(admin_attribute, dsn=DATA_path, "ref", overwrite_layer=TRUE, driver="ESRI Shapefile")
+# rasterizing the polygon data of reference (e.g administrative, such as district or province boundary map) using gdal_rasterize
+shp_dir<-paste(DATA_path,"/", "ref.shp", sep="")
+file_out<-paste(DATA_path, "/", "ref.tif", sep="")
+res<-spat_res
+if (file.exists("C:/Program Files (x86)/LUMENS/bin/gdal_rasterize.exe")){
+  gdalraster = "C:/Progra~2/LUMENS/bin/gdal_rasterize.exe "
+} else{
+  gdalraster = "C:/Progra~1/LUMENS/bin/gdal_rasterize.exe "
+}
+osgeo_comm<-paste(gdalraster, shp_dir, file_out,"-a IDADM -tr", res, res, "-a_nodata 255 -ot Byte", sep=" ")
+system(osgeo_comm)
+# unlink shapefile and raster
+unlink(list.files(pattern = "ref"))
+# create an initial coverage reference for LUMENS project
+ref<-brick(file_out)
+ref<-ref*1
+names(ref)<-"Administrative maps"
+Ref.name<-names(ref)
+Ref.type<-class(ref)
+Ref.coord<-as.character(crs(ref))
+Ref.res<-res(ref)
+Ref.xmin<-xmin(ref)
+Ref.xmax<-xmax(ref)
+Ref.ymin<-ymin(ref)
+Ref.ymax<-ymax(ref)
+cov.desc1<-c("Reference name","Reference class", "Reference CRS", "Reference Resolution", "Xmin", "Xmax", "Ymin", "Ymax")
+cov.desc2<-as.data.frame(rbind(Ref.name, Ref.type, Ref.coord, Ref.res, Ref.xmin, Ref.xmax, Ref.ymin, Ref.ymax))
+cov.desc2<-cov.desc2[1]
+cov.desc<-cbind(cov.desc1,cov.desc2)
+colnames(cov.desc)[1]<-"Coverage"
+colnames(cov.desc)[2]<-"Description"
+# load reference attribute from csv dissolve table 
+p.admin.df<-read.table(dissolve_table, header=TRUE, sep=",")
+colnames(p.admin.df)[2]="ADMIN_UNIT"
+
+#=Set all values, functions, and initial indices to zero, for each index serves as a counter
+# e.g landuse.index serve as a counter of landuse numbers
 db_name<-paste(project, ".lpj", sep="")
 landuse.index=0
 pu.index=0
@@ -81,7 +123,7 @@ TA1.index=0
 TA2.index=0
 ref.index=1
 admin.index=1
-
+# getting an information of windows architecture through the path of LUMENS installation 
 if (file.exists("C:/Program Files (x86)/LUMENS")){
   win.arch = "32bit"
   processing.path = "C:/Progra~2/LUMENS/apps/qgis/python/plugins/processing/r/scripts/"
@@ -89,69 +131,20 @@ if (file.exists("C:/Program Files (x86)/LUMENS")){
   win.arch = "64bit"
   processing.path = "C:/Progra~1/LUMENS/apps/qgis/python/plugins/processing/r/scripts/"
 }
-
-#CREATE RESAVE FUNCTION
+# prepare some functions and store it to LUMENS project file, so it can be used later
+# RESAVE function
 resave <- function(..., list = character(), file) {
   previous  <- load(file)
   var.names <- c(list, as.character(substitute(list(...)))[-1L])
   for (var in var.names) assign(var, get(var, envir = parent.frame()))
   save(list = unique(c(previous, var.names)), file = file)
 }
-
-#CREATE PROJECT DESCRIPTION TABLE
-proj_descr <- as.data.frame(rbind(project, description, working_directory, location, province, country))
-
-#CREATE COVERAGE REFERENCE FOR PROJECT
-ref<-data
-ref<-ref*1
-Ref.name<-names(ref)
-Ref.type<-class(ref)
-Ref.coord<-as.character(crs(ref))
-Ref.res<-res(ref)
-Ref.xmin<-xmin(ref)
-Ref.xmax<-xmax(ref)
-Ref.ymin<-ymin(ref)
-Ref.ymax<-ymax(ref)
-cov.desc1<-c("Reference name","Reference class", "Reference CRS", "Reference Resolution", "Xmin", "Xmax", "Ymin", "Ymax")
-cov.desc2<-as.data.frame(rbind(Ref.name, Ref.type, Ref.coord, Ref.res, Ref.xmin, Ref.xmax, Ref.ymin, Ref.ymax))
-cov.desc2<-cov.desc2[1]
-cov.desc<-cbind(cov.desc1,cov.desc2)
-colnames(cov.desc)[1]<-"Coverage"
-colnames(cov.desc)[2]<-"Description"
-
-#ATTRIBUTE OF ADMIN
-p.admin.df<-read.table(dissolve_table, header=TRUE, sep=",")
-colnames(p.admin.df)[2]="ADMIN_UNIT"
-
-myColors1 <- brewer.pal(9,"Set1")
-myColors2 <- brewer.pal(8,"Accent")
-myColors3 <- brewer.pal(12,"Paired")
-myColors4 <- brewer.pal(9, "Pastel1")
-myColors5 <- brewer.pal(8, "Set2")
-myColors6 <- brewer.pal(8, "Dark2")
-myColors7 <- rev(brewer.pal(11, "RdYlGn"))
-myColors8 <- "#000000"
-myColors9 <- brewer.pal(12, "Set3")
-
-if (0 %in% p.admin.df$IDADM){
-  myColors  <-c(myColors8, myColors7,myColors1, myColors2, myColors3, myColors4, myColors5, myColors6)
-} else {
-  myColors  <-c(myColors7,myColors1, myColors2, myColors3, myColors4, myColors5, myColors6)
+# GET_FROM_RDB function
+get_from_rdb <- function(symbol, filebase, envir =parent.frame()){
+  lazyLoad(filebase = filebase, envir = envir, filter = function(x) x == symbol)
 }
-
-myColors.lu <- myColors[1:(length(unique(p.admin.df$IDADM))+1)]
-ColScale.lu<-scale_fill_manual(name=field_attribute, breaks=c(0, p.admin.df$IDADM), labels=c("NoData", as.character(p.admin.df$ADMIN_UNIT)), values=myColors.lu)
-plot3<-gplot(ref, maxpixels=100000) + geom_raster(aes(fill=as.factor(value))) +
-  coord_equal() + ColScale.lu + theme(plot.title = element_text(lineheight= 5, face="bold")) +
-  theme( axis.title.x=element_blank(),axis.title.y=element_blank(),
-         panel.grid.major=element_blank(), panel.grid.minor=element_blank(),
-         legend.title = element_text(size=10),
-         legend.text = element_text(size=10),
-         legend.key.height = unit(0.35, "cm"),
-         legend.key.width = unit(0.35, "cm"))
-
-setwd(LUMENS_path)
-
+# write project properties into table
+proj_descr <- as.data.frame(rbind(project, description, working_directory, location, province, country))
 test<-c(rownames(proj_descr))
 proj_descr<-cbind(test, proj_descr)
 colnames(proj_descr)[1]<-"Type"
@@ -159,8 +152,7 @@ colnames(proj_descr)[2]<-"Description"
 proj_descr<-as.data.frame(proj_descr)
 proj.file<-paste(LUMENS_path, "/",project,".lpj", sep="")
 
-names(ref)<-"Administrative maps"
-
+#=Save all params into .RData objects
 save(LUMENS_path_user,
 landuse.index,
 proj_descr,
@@ -191,19 +183,17 @@ TA1.index,
 TA2.index,
 win.arch,
 processing.path,
-resave, file=proj.file)
-
-#WRITE REFERENCE DATA TO CSV
+resave, 
+get_from_rdb,
+file=proj.file)
+# write the properties of reference data to csv lookup table
 csv_file<-paste(DATA_path,"/csv_planning_unit.csv", sep="")
 eval(parse(text=(paste("list_of_data_pu<-data.frame(RST_DATA='ref', RST_NAME=names(ref), LUT_NAME='p.admin.df', row.names=NULL)", sep=""))))
 write.table(list_of_data_pu, csv_file, quote=FALSE, row.names=FALSE, sep=",")
-
-#CREATE NEW RDATA FOR PLANNING UNIT
+# save it 
 save(list_of_data_pu, ref, p.admin.df, file=paste(DATA_path, "/planning_unit", sep=""))
 
-setwd(DATA_path)
-
-#CREATE QGIS PROJECT
+#=Create QGIS project (.qgs)
 qgsproject<-paste(DATA_path, "/", project, ".qgs", sep="")
 sink(qgsproject)
 cat("<!DOCTYPE qgis PUBLIC 'http://mrcc.com/qgis.dtd' 'SYSTEM'>")
@@ -279,7 +269,34 @@ cat('</properties>')
 cat('</qgis>')
 sink()
 
-#WRITE REPORT
+#=Create LUMENS Project Report (.lpr)
+# arrange numerous colors with RColorBrewer
+myColors1 <- brewer.pal(9,"Set1")
+myColors2 <- brewer.pal(8,"Accent")
+myColors3 <- brewer.pal(12,"Paired")
+myColors4 <- brewer.pal(9, "Pastel1")
+myColors5 <- brewer.pal(8, "Set2")
+myColors6 <- brewer.pal(8, "Dark2")
+myColors7 <- rev(brewer.pal(11, "RdYlGn"))
+myColors8 <- "#000000"
+myColors9 <- brewer.pal(12, "Set3")
+if (0 %in% p.admin.df$IDADM){
+  myColors  <-c(myColors8, myColors7,myColors1, myColors2, myColors3, myColors4, myColors5, myColors6)
+} else {
+  myColors  <-c(myColors7,myColors1, myColors2, myColors3, myColors4, myColors5, myColors6)
+}
+# create an Rplot for reference map
+myColors.lu <- myColors[1:(length(unique(p.admin.df$IDADM))+1)]
+ColScale.lu<-scale_fill_manual(name=field_attribute, breaks=c(0, p.admin.df$IDADM), labels=c("NoData", as.character(p.admin.df$ADMIN_UNIT)), values=myColors.lu)
+plot.admin<-gplot(ref, maxpixels=100000) + geom_raster(aes(fill=as.factor(value))) +
+  coord_equal() + ColScale.lu + theme(plot.title = element_text(lineheight= 5, face="bold")) +
+  theme( axis.title.x=element_blank(),axis.title.y=element_blank(),
+         panel.grid.major=element_blank(), panel.grid.minor=element_blank(),
+         legend.title = element_text(size=10),
+         legend.text = element_text(size=10),
+         legend.key.height = unit(0.35, "cm"),
+         legend.key.width = unit(0.35, "cm"))
+# write report   
 title1<-"{\\colortbl;\\red0\\green0\\blue0;\\red255\\green0\\blue0;\\red146\\green208\\blue80;\\red0\\green176\\blue240;\\red140\\green175\\blue71;\\red0\\green112\\blue192;\\red79\\green98\\blue40;} \\pard\\qr\\b\\fs70\\cf2 L\\cf3U\\cf4M\\cf5E\\cf6N\\cf7S \\cf1REPORT \\par\\b0\\fs20\\ql\\cf1"
 title2<-paste("\\pard\\qr\\b\\fs40\\cf1 Create LUMENS Project ", "for ", location, ", ", province, ", ", country, "\\par\\b0\\fs20\\ql\\cf1", sep="")
 sub_title<-"\\cf2\\b\\fs32 Ringkasan Deskripsi Projek\\cf1\\b0\\fs20"
@@ -352,17 +369,68 @@ addParagraph(rtffile, line)
 addNewLine(rtffile)
 addParagraph(rtffile, "Berikut ini adalah beberapa data yang akan dijadikan data acuan dalam projek ini")
 addNewLine(rtffile)
-#addParagraph(rtffile, paste("\\cf4\\b \\fs20 Peta Acuan Dalam Format Raster\\b \\fs20\\cf1", sep=" "))
-#addPlot(rtffile,plot.fun=print, width=5,height=3.5,res=150,  plot3)
-#addNewLine(rtffile)
 addParagraph(rtffile, paste("\\cf4\\b \\fs20 Peta batas administrasi\\b \\fs20\\cf1", sep=" "))
-addPlot(rtffile,plot.fun=print, width=6,height=4.5,res=150,  plot3)
+addPlot(rtffile,plot.fun=print, width=6,height=4.5,res=150,  plot.admin)
 addNewLine(rtffile)
 done(rtffile)
-
+# show result via shell command 
 command<-paste("start ", "winword ", DATA_path, "/LUMENS_Create-Project_report.lpr", sep="" )
 shell(command)
 
+#=Create HTML result (.html)
+# save reference map to png picture format
+png("admin.png")
+plot(plot.admin)
+# formatting table to json and save to variables  
+row.names(proj_descr)<-NULL
+json_proj_descr_col<-toJSON(colnames(proj_descr))
+json_proj_descr<-toJSON(proj_descr)
+row.names(cov.desc)<-NULL
+json_cov.desc_col<-toJSON(colnames(cov.desc))
+json_cov.desc<-toJSON(cov.desc)
+# copy d3.v3.min.jd to DATA directory
+file.copy(paste(processing.path, "/d3.v3.min.js", sep=""), DATA_path)
+# write to HTML
+htmlproject<-paste(DATA_path, "/", project, ".html", sep="")
+sink(htmlproject)
+# set header
+cat("<!DOCTYPE HTML PUBLIC '-//W3C//DTD HTML 4.01//EN' 'http://www.w3.org/TR/html4/strict.dtd'>")
+cat("<html lang='en'><head><meta charset='utf-8'/><script src='d3.v3.min.js' charset='utf-8'></script><style>")
+cat("td, th { padding: 2px 4px; }")
+cat("th { font-weight: bold;border-bottom: 1px solid #000;border-top: 1px solid #000;}")
+cat("tr:last-child td{ border-bottom: 1px solid #000; }</style><title>LUMENS Result Viewer</title></head>")
+# fill the html body
+cat("<body><p><strong><font style='color:rgb(255,0,0);'>L</font><font style='color:rgb(146,208,80);'>U</font><font style='color:rgb(0,176,240);'>M</font><font style='color:rgb(140,175,71);'>E</font><font style='color:rgb(0,112,192);'>N</font><font style='color:rgb(79,98,40);'>S</font> REPORT</strong></p>
+    <p>LUMENS Project for", location,", ", province, ", ", country, "</p><div id='container'></div><img src='admin.png' />")
+# footer with javascript using D3.js
+cat("<script>
+function tabulate(data, columns) {
+var table = d3.select('#container').append('table'),
+thead = table.append('thead'),
+tbody = table.append('tbody');
+
+thead.append('tr').selectAll('th').data(columns).enter().append('th').text(function(column) { return column; });
+
+var rows = tbody.selectAll('tr').data(data).enter().append('tr');
+
+var cells = rows.selectAll('td')
+.data(function(row) {
+  return columns.map(function(column) {
+    return {column: column, value: row[column]};
+  });
+}).enter().append('td').text(function(d) { return d.value; });
+return table;
+}
+")
+cat("var projDescr =", json_proj_descr, ";
+    var projDescrTable = tabulate(projDescr,", json_proj_descr_col, ");")
+cat("var covDesc =", json_cov.desc, ";
+    var covDescTable = tabulate(covDesc,", json_cov.desc_col, ");")
+cat("</script></body></html>")
+sink()
+
+#=Writing final status message (code, message)
 statuscode<-1
 statusmessage<-"LUMENS database has been created!"
 statusoutput<-data.frame(statuscode=statuscode, statusmessage=statusmessage)
+
