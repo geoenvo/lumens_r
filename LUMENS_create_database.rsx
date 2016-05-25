@@ -50,16 +50,12 @@ dir.create(SCIENDO_path, mode="0777")
 dir.create(DATA_path, mode="0777")
 #dir.create(help_path, mode="0777")
 
-#=Create LUMENS.log with saving some parameters (working directory, project name, and time start) 
+#This variables only to find out the identity of user who create database for the first time 
 user_temp_folder<-Sys.getenv("TEMP")
 if(user_temp_folder=="") {
   user_temp_folder<-Sys.getenv("TMP")
 }
-LUMENS_path_user <- paste(user_temp_folder,"/LUMENS", sep="")
-dir.create(LUMENS_path_user, mode="0777")
-sink(paste(LUMENS_path_user, "/LUMENS.log", sep=""))
-cat(working_directory, project, time_start, sep=",")
-sink()
+LUMENS_path_user <- paste(user_temp_folder,"/LUMENS", sep="") 
 
 #=Set reference data
 # save as temporary data to DATA directory
@@ -76,8 +72,6 @@ if (file.exists("C:/Program Files (x86)/LUMENS/bin/gdal_rasterize.exe")){
 }
 osgeo_comm<-paste(gdalraster, shp_dir, file_out,"-a IDADM -tr", res, res, "-a_nodata 255 -ot Byte", sep=" ")
 system(osgeo_comm)
-# unlink shapefile and raster
-unlink(list.files(pattern = "ref"))
 # create an initial coverage reference for LUMENS project
 ref<-brick(file_out)
 ref<-ref*1
@@ -99,6 +93,8 @@ colnames(cov.desc)[2]<-"Description"
 # load reference attribute from csv dissolve table 
 p.admin.df<-read.table(dissolve_table, header=TRUE, sep=",")
 colnames(p.admin.df)[2]="ADMIN_UNIT"
+# unlink shapefile and raster
+unlink(list.files(pattern = "ref"))
 
 #=Set all values, functions, and initial indices to zero, for each index serves as a counter
 # e.g landuse.index serve as a counter of landuse numbers
