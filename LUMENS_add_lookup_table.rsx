@@ -1,23 +1,16 @@
 ##Alpha - DATABASE=group
+##proj.file=string
 ##description=string
 ##attribute_table=string
 ##statusoutput=output table
 
+#=Load library
 library(stringr)
 
-#READ LUMENS LOG FILE
-user_temp_folder<-Sys.getenv("TEMP")
-if(user_temp_folder=="") {
-  user_temp_folder<-Sys.getenv("TMP")
-}
-LUMENS_path_user <- paste(user_temp_folder,"/LUMENS/LUMENS.log", sep="")
-LUMENS_temp_user <- paste(user_temp_folder,"/LUMENS/temp", sep="")
-dir.create(LUMENS_temp_user, mode="0777")
-log.file<-read.table(LUMENS_path_user, header=FALSE, sep=",")
-proj.file<-paste(log.file[1,1], "/", log.file[1,2],"/",log.file[1,2], ".lpj", sep="")
+#=Load active project 
 load(proj.file)
 
-#SET PATH OF DATA DIRECTORY 
+#=Set working directory to DATA folder 
 data_dir<-paste(dirname(proj.file), "/DATA/", sep="")
 setwd(data_dir)
 
@@ -45,11 +38,12 @@ if(check_rdata){
 } else {
   eval(parse(text=(paste("save(lut", lut.index, ", list_of_data_lut, file=file_rdata)", sep="")))) 
 }
-#make lazyLoad database
+#=Create lazyLoad database
 e = local({load(category); environment()})
 tools:::makeLazyLoadDB(e, category)
 resave(lut.index, file=proj.file)
 
+#=Writing final status message (code, message)
 statuscode<-1
 statusmessage<-"Lookup table has been added"
 statusoutput<-data.frame(statuscode=statuscode, statusmessage=statusmessage)

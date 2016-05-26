@@ -1,4 +1,5 @@
 ##Alpha - DATABASE=group
+##proj.file=string
 ##type=selection Land Use/Cover; Planning Unit; Factor
 ##data=raster
 ##period=number 0
@@ -7,23 +8,18 @@
 ##statusoutput=output table
 ##passfilenames
 
+#=Load library
 library(spatial.tools)
 
-#READ LUMENS LOG FILE
-user_temp_folder<-Sys.getenv("TEMP")
-if(user_temp_folder=="") {
-  user_temp_folder<-Sys.getenv("TMP")
-}
-LUMENS_path_user <- paste(user_temp_folder,"/LUMENS/LUMENS.log", sep="")
-log.file<-read.table(LUMENS_path_user, header=FALSE, sep=",")
-proj.file<-paste(log.file[1,1], "/", log.file[1,2],"/",log.file[1,2], ".lpj", sep="")
+#=Load active project 
 load(proj.file)
 
-#SET PATH OF DATA DIRECTORY 
+#=Set working directory to DATA folder 
 data_dir<-paste(dirname(proj.file), "/DATA/", sep="")
 setwd(data_dir)
 
-#RASTER COMMAND
+#=Create raster_category function
+# to synchronize all of the data spatial input
 command="raster"
 raster_category<-function(category, name, desc) {
   eval(parse(text=(paste(name, "<<-", command,'("', data, '")', sep=""))))
@@ -33,7 +29,10 @@ raster_category<-function(category, name, desc) {
   eval(parse(text=(paste(name, "@title<<-category", sep=""))))
 }
 
-#CLASSIFY RASTER INTO THREE TYPES INPUT 
+#=Classify raster into three types of input
+# type 0: land_use_cover
+# type 1: planning_unit
+# type 2: factor
 if(type==0){
   category<-"land_use_cover"
   data_name<-"Landuse"
@@ -79,7 +78,7 @@ if(type==0){
     eval(parse(text=(paste("save(", data_name, "_", landuse.index, ", freq", data_name, "_", landuse.index, ", list_of_data_luc, file=file_rdata)", sep="")))) 
   }
   eval(parse(text=(paste("resave(landuse.index, period.index, ", period_i, ", file=proj.file)", sep=""))))
-  #make lazyLoad database
+  #create lazyLoad database
   e = local({load(category); environment()})
   tools:::makeLazyLoadDB(e, category)
   
@@ -123,7 +122,7 @@ if(type==0){
     eval(parse(text=(paste("save(", data_name, pu.index, ", lut.pu", pu.index, ", list_of_data_pu, file=file_rdata)", sep="")))) 
   }
   resave(pu.index, file=proj.file)
-  #make lazyLoad database
+  #create lazyLoad database
   e = local({load(category); environment()})
   tools:::makeLazyLoadDB(e, category)
 
@@ -163,7 +162,7 @@ if(type==0){
     eval(parse(text=(paste("save(", data_name, factor.index, ", list_of_data_f, file=file_rdata)", sep="")))) 
   }
   resave(factor.index, file=proj.file)
-  #make lazyLoad database
+  #create lazyLoad database
   e = local({load(category); environment()})
   tools:::makeLazyLoadDB(e, category)
   
@@ -171,4 +170,5 @@ if(type==0){
   statusmessage<-"factor data has been added!"
 }
 
+#=Writing final status message (code, message)
 statusoutput<-data.frame(statuscode=statuscode, statusmessage=statusmessage)

@@ -1,4 +1,5 @@
 ##Alpha - DATABASE=group
+##proj.file=string
 ##type=selection Land Use/Cover; Planning Unit
 ##data=vector
 ##attribute_field_id=field data
@@ -7,28 +8,26 @@
 ##attribute_table=string
 ##statusoutput=output table
 
+#=Load library
 library(stringr)
 library(spatial.tools)
 
-#READ LUMENS LOG FILE
+#=Load active project 
+load(proj.file)
+
+#=Set temporary folder
 user_temp_folder<-Sys.getenv("TEMP")
 if(user_temp_folder=="") {
   user_temp_folder<-Sys.getenv("TMP")
 }
-LUMENS_path_user <- paste(user_temp_folder,"/LUMENS/LUMENS.log", sep="")
-LUMENS_temp_user <- paste(user_temp_folder,"/LUMENS/temp", sep="")
-dir.create(LUMENS_temp_user, mode="0777")
-log.file<-read.table(LUMENS_path_user, header=FALSE, sep=",")
-proj.file<-paste(log.file[1,1], "/", log.file[1,2],"/",log.file[1,2], ".lpj", sep="")
-load(proj.file)
 
-#WRITE VECTORS 
-setwd(LUMENS_temp_user)
+#=Write temporary vector to temporary folder
+setwd(user_temp_folder)
 description<-str_replace_all(string=description, pattern=" ", repl=".")
-writeOGR(data, dsn=LUMENS_temp_user, description, overwrite_layer=TRUE, driver="ESRI Shapefile")
+writeOGR(data, dsn=user_temp_folder, description, overwrite_layer=TRUE, driver="ESRI Shapefile")
 
-shp_dir<-paste(LUMENS_temp_user,"/", description, ".shp", sep="")
-file_out<-paste(LUMENS_temp_user, "/", description,  ".tif", sep="")
+shp_dir<-paste(user_temp_folder,"/", description, ".shp", sep="")
+file_out<-paste(user_temp_folder, "/", description,  ".tif", sep="")
 res<-res(ref)[1]
 if (file.exists("C:/Program Files (x86)/LUMENS/bin/gdal_rasterize.exe")){
   gdalraster = "C:/Progra~2/LUMENS/bin/gdal_rasterize.exe "
@@ -45,10 +44,13 @@ raster_category<-function(category, raster_data, name, desc) {
   eval(parse(text=(paste(name, "@title<<-category", sep=""))))
 }
 
-#SET PATH OF DATA DIRECTORY 
+#=Set working directory to DATA folder 
 data_dir<-paste(dirname(proj.file), "/DATA/", sep="")
 setwd(data_dir)
 
+#=Classify raster into two types of input
+# type 0: land_use_cover
+# type 1: planning_unit
 tif_file<-raster(file_out)
 if(type==0){
   category<-"land_use_cover"
@@ -97,7 +99,7 @@ if(type==0){
     eval(parse(text=(paste("save(", data_name, "_", landuse.index, ", freq", data_name, "_", landuse.index, ", list_of_data_luc, file=file_rdata)", sep="")))) 
   }
   eval(parse(text=(paste("resave(landuse.index, period.index, ", period_i, ", file=proj.file)", sep=""))))
-  #make lazyLoad database
+  #create lazyLoad database
   e = local({load(category); environment()})
   tools:::makeLazyLoadDB(e, category)
     
@@ -144,7 +146,7 @@ if(type==0){
     eval(parse(text=(paste("save(", data_name, pu.index, ", lut.pu", pu.index, ", list_of_data_pu, file=file_rdata)", sep="")))) 
   }
   resave(pu.index, file=proj.file)
-  #make lazyLoad database
+  #create lazyLoad database
   e = local({load(category); environment()})
   tools:::makeLazyLoadDB(e, category)
   
@@ -152,4 +154,5 @@ if(type==0){
   statusmessage<-"planning unit has been added"
 }
  
+#=Writing final status message (code, message)
 statusoutput<-data.frame(statuscode=statuscode, statusmessage=statusmessage)
