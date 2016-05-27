@@ -1,4 +1,5 @@
 ##Alpha - PUR=group
+##proj.file=string
 ##ref_data=vector
 ##Field=field ref_data
 ##data_name=string
@@ -6,10 +7,12 @@
 ##ref_mapping=string
 ##pu_units=string
 ##PUR_rec1=output raster
+##PUR_rec1_shp=output vector
 ##data_attribute=output table
 ##database_unresolved_out=output table
 ##statusoutput=output table
 
+#=Load library
 library(foreign)
 library(grid)
 library(gridExtra)
@@ -19,36 +22,24 @@ library(RColorBrewer)
 library(rtf)
 library(spatial.tools)
 
-#CREATE FUNCTION TO GET OBJECT FROM RDB
-get_from_rdb <- function(symbol, filebase, envir =parent.frame()){
-  lazyLoad(filebase = filebase, envir = envir, filter = function(x) x == symbol)
-}
-
-#READ LUMENS LOG FILE
-user_temp_folder<-Sys.getenv("TEMP")
-if(user_temp_folder=="") {
-  user_temp_folder<-Sys.getenv("TMP")
-}
-LUMENS_path_user <- paste(user_temp_folder,"/LUMENS/LUMENS.log", sep="")
-log.file<-read.table(LUMENS_path_user, header=FALSE, sep=",")
-proj.file<-paste(log.file[1,1], "/", log.file[1,2],"/",log.file[1,2], ".lpj", sep="")
+#=Load active project
 load(proj.file)
 
-#SET PATH OF DATA DIRECTORY 
+#=Set working directory to DATA folder 
 data_dir<-paste(dirname(proj.file), "/DATA/", sep="")
 #setwd(data_dir)
 
 time_start<-paste(eval(parse(text=(paste("Sys.time ()")))), sep="")
 
-#Increment index then create working directory based on index
+# raising index then create working directory based on index
 PUR.index=PUR.index+1
 resave(PUR.index, file=proj.file)
-wd_user<-paste(log.file[1,1], "/", log.file[1,2],"/PUR/PUR_analysis_",PUR.index, sep="")
+wd_user<-paste(dirname(proj.file), "/PUR/PUR_analysis_", PUR.index, sep="")
 dir.create(wd_user, mode="0777")
 setwd(wd_user)
 
-#Load and merge data with reference map
-#ref_data<-readOGR(ref_data, "RTRWP_2014_50N")
+#=Load and merge data with reference map
+# ex. ref_data<-readOGR(ref_data, "RTRWP_2014_50N")
 sa<-subset(ref_data, select=Field)
 tabel_acuan<-read.table(ref_class, header=FALSE, sep=",")
 colnames(tabel_acuan)[1]="acuan_kelas"
@@ -60,14 +51,14 @@ countrow<-nrow(tabel_mapping)
 tabel_mapping$IDO<-seq(countrow)
 ref_map<-merge(sa, tabel_mapping, by=Field)
 
-#Save reference table and map to temporary folder
+#=Save reference table and map to temporary folder
 target_file<-paste(wd_user,"/PURREF_",data_name, ".csv", sep="")
 write.table(tabel_mapping, target_file, quote=FALSE, row.names=FALSE, sep=",")
 write.table(tabel_acuan, "hirarki_rekonsiliasi.csv", quote=FALSE, row.names=FALSE, sep=",")
 wd_usertemp<-paste(wd_user,"/temp", sep="")
 writeOGR(ref_map, dsn=wd_usertemp, data_name, driver="ESRI Shapefile")
 
-#Rasterize shapefile using gdal_rasterize
+#=Rasterize shapefile using gdal_rasterize
 shp_dir<-paste(wd_usertemp,"/", data_name, ".shp", sep="")
 file_out<-paste(wd_user,"/", "PURREF_" ,data_name, ".tif", sep="")
 kolom_data<-paste('IDO')
@@ -83,7 +74,7 @@ system(osgeo_comm)
 
 #Check if file_out exist (?)
 
-#====PREPARE REFERENCE DATA====
+#=Prepare reference data
 datalist2<-as.data.frame(list.files(path=wd_user, pattern="PURREF", full.names=TRUE))
 ref<-as.character(datalist2[2,])
 ref.table<-as.character(datalist2[1,])
@@ -92,23 +83,23 @@ ref.name<-names(ref)
 lookup_ref<- read.table(ref.table, header=TRUE, sep=",")
 colnames(lookup_ref)[1]<-"REFERENCE"
 
-#====PREPARE PLANNING UNIT FILE====
+#=Prepare planning units
 pu_list<-read.table(pu_units, header=FALSE, sep=",")
 n_pu_list<-nrow(pu_list)
 cmd <- paste()
 command1 <- paste()
 central_attr<-NULL
 for(i in 1:n_pu_list){
-  #Set planning unit parameter 
+  # set planning unit parameter 
   data_name<-as.character(pu_list[i,1])
   pu_data<-as.character(pu_list[i,2])
   Type<-as.character(pu_list[i,4])
   lut_data<-paste("lut.pu", substring(pu_data, 6), sep="")
-
-  #Get planning unit data from rdb/rdx
+  
+  # get planning unit data from rdb/rdx
   get_from_rdb(symbol=paste(pu_data), filebase=paste(data_dir, "planning_unit", sep=""))
   get_from_rdb(symbol=paste(lut_data), filebase=paste(data_dir, "planning_unit", sep=""))
-
+  
   central_attr<-append(central_attr, data_name)
   eval(parse(text=(paste(pu_data, "<-spatial_sync_raster(", pu_data, ',ref, method = "ngb")', sep=""))))
   eval(parse(text=(paste(pu_data, "[is.na(", pu_data, ")]<-0", sep="")))) 
@@ -127,24 +118,24 @@ ref.number <- n_pu_list+1
 eval(parse(text=(paste("R", ref.number, "<-ref*1", sep=""))))
 cmd<-paste(cmd,"R", ref.number, sep="")
 
-#====COMBINE PLANNING UNIT FILES AND REFERENCE FILE====
-#Stacking planning unit
+#=Combine reference and planning units
+# stacking planning unit
 command1 <- paste(command1, ",ref", sep="") 
 eval(parse(text=(paste("PUR_stack <- stack(", command1, ")", sep="")))) 
 
-#Create raster attribute table from combined planning unit
+# create raster attribute table from combined planning unit
 eval(parse(text=(paste("PUR<-", cmd, sep=""))))
 PUR <- ratify(PUR, count=TRUE)
 PUR_db<-levels(PUR)[[1]]
 
-#Reclassify attribute ID
+# reclassify attribute ID
 ORI_ID<-PUR_db$ID
 NEW_ID<-seq(nrow(PUR_db)) # <== new ids come from sequence of original ids
 rclmat<-cbind(as.matrix(ORI_ID), as.matrix(NEW_ID)) # <== create reclassify matrix(ORI_ID, NEW_ID)
 PUR<-reclassify(PUR, rclmat) # <== reclass raster
 PUR<-ratify(PUR, count=TRUE)
 
-#Extract all ids
+# extract all ids
 PUR_db$NEW_ID<-NEW_ID
 PUR_db$TEMP_ID<-PUR_db[,1]
 k<-0
@@ -155,7 +146,7 @@ while(k < ref.number) {
 }
 PUR_db$TEMP_ID<-NULL
 
-#====CONDUCT RECONCILIATION====#
+#=Conduct reconciliation
 colnames(PUR_db)[1]="unique_id"
 colnames(PUR_db)[2]="Freq"
 #colnames(PUR_db)[3]="NEW_ID"
@@ -174,7 +165,7 @@ for(j in 1:(n_pu_list)) {
   eval(parse(text=(paste("PUR_dbmod<-within(PUR_dbmod,{cek", j, "<-as.numeric(", data_name, "==IDS)})",sep=""))))
 }
 
-#Check planning unit which is overlapped refer to reference data 
+# check planning unit which is overlapped refer to reference data 
 #   if there is no overlapping data then attribute equals to reference,
 #   else attribute would become unresolved
 command4<-paste()
@@ -188,7 +179,7 @@ for (p in 1:n_pu_list) {
 PUR_dbmod<-within(PUR_dbmod, {reconcile1<-eval(parse(text=(command4)))})
 PUR_dbmod<-within(PUR_dbmod, {reconcile_attr<-ifelse(reconcile1==0,as.character(REFERENCE), "unresolved")})
 
-#Put an ID in overlapped/reconcile attribute 
+# put an ID in overlapped/reconcile attribute 
 command5<-paste()
 for (r in 1:n_pu_list) {
   if (r!=n_pu_list) {
@@ -200,7 +191,7 @@ for (r in 1:n_pu_list) {
 }
 PUR_dbmod<-within(PUR_dbmod, {reconcile_attr2<-ifelse(reconcile1==1, reconcile_attr2<-eval(parse(text=(command5))),100)})
 
-#Create central attribute of planning units
+# create central attribute of planning units
 central_attr<-as.data.frame(central_attr)
 numb_ca<-nrow(central_attr)
 numb_ca<-as.data.frame(seq(numb_ca))
@@ -215,7 +206,7 @@ colnames(add_22)[1]="Rec_phase1"
 colnames(add_22)[2]="reconcile_attr2"
 central_attrmod<-rbind(central_attrmod, add_22)
 
-#Change reconcile attribute into a unique one
+# change reconcile attribute into a unique one
 PUR_dbfinal<-merge(PUR_dbmod,central_attrmod, by='reconcile_attr2')
 PUR_dbfinal<-within(PUR_dbfinal, {
   Rec_phase1<-ifelse(Rec_phase1=="none", as.character(reconcile_attr), as.character(Rec_phase1))})
@@ -234,15 +225,27 @@ colnames(PUR_dbfinal2)[1]= "ID"
 test1<-unique(PUR_dbfinal2)[1]
 test2<-unique(PUR_dbfinal2)[2]
 test3<-cbind(test1,test2)
-levels(PUR)<-merge((levels(PUR)),test3,by="ID") #output shapefile
+levels(PUR)<-merge((levels(PUR)),test3,by="ID") 
 PUR_rec1 <- deratify(PUR,'Rec_phase1b')
 PUR_rec2<-ratify(PUR_rec1, filename='PUR_rec1.grd',count=TRUE,overwrite=TRUE) #cuma untuk di merge aja
 levels(PUR_rec1)<-merge((levels(PUR_rec1)),levels(PUR_rec2),by="ID")
-PUR_rec3<-stack(PUR, PUR_rec1)
-writeRaster(PUR_rec1, filename="PUR_reconciliation_result", format="GTiff", overwrite=TRUE)
+#PUR_rec3<-stack(PUR, PUR_rec1)
+# write PUR reconciliation phase 1 raster
 write.dbf(PUR_dbfinal, "PUR_database_final.dbf")
+writeRaster(PUR_rec1, filename="PUR_reconciliation_result", format="GTiff", overwrite=TRUE)
+# convert raster to shapefile using gdal polygonize
+tif_dir<-paste(wd_user,"/PUR_reconciliation_result.tif", sep="")
+file_out<-paste(wd_user, "/PUR_reconciliation_result.shp", sep="")
+if (file.exists("C:/Program Files (x86)/LUMENS/bin/gdal_polygonize.py")){
+  gdalpolygon = "C:/Progra~2/LUMENS/bin/gdal_polygonize.py "
+} else{
+  gdalpolygon = "C:/Progra~1/LUMENS/bin/gdal_polygonize.py "
+}
+osgeo_comm<-paste('python', gdalpolygon, tif_dir,'-f "ESRI Shapefile"', file_out, 'PUR_reconciliation_result PU_name', sep=" ")
+system(osgeo_comm)
+PUR_rec1_shp<-readOGR(".", "PUR_reconciliation_result")
 
-#DATABASE HANDLING
+#=Save PUR final database and unresolved case(s) 
 database_final<-PUR_dbfinal
 database_unresolved<-subset(PUR_dbfinal, Rec_phase1 == "unresolved")
 test_unresolve<-nrow(database_unresolved)
@@ -279,8 +282,9 @@ if (test_unresolve!=0) {
   database_unresolved_out<-as.data.frame("There are no unresolved area in this analysis session")
   colnames(database_unresolved_out)[1]<-"Reconciliation result"
 }
-#FUNCTION FOR PLOTTING
-#Create Map for report
+
+#=Create Map for report
+# arrange numerous colors with RColorBrewer
 myColors1 <- brewer.pal(9,"Set1")
 myColors2 <- brewer.pal(8,"Accent")
 myColors3 <- brewer.pal(12,"Paired")
@@ -318,7 +322,7 @@ Rec.phs.bar<-ggplot(data=area_rec1, aes(x=Rec_phase1b, y=COUNT, fill=Rec_phase1b
   theme(axis.title.x=element_blank(), axis.text.x = element_text(size=8),
         panel.grid.major=element_blank(), panel.grid.minor=element_blank())
 
-#rtf report file
+#write report
 title<-"\\b\\fs40 LUMENS-PUR Project Report\\b0\\fs20"
 sub_title<-"\\b\\fs32 REKONSILIASI UNIT PERENCANAAN MENGGUNAKAN DATA ACUAN\\b0\\fs20"
 date<-paste("Date : ", date(), sep="")
@@ -385,6 +389,7 @@ done(rtffile)
 command<-paste("start ", "winword ", wd_user, "/LUMENS_PUR_report_reconcile.lpr", sep="" )
 shell(command)
 
+#=Writing final status message (code, message)
 statuscode<-1
 statusmessage<-"PUR reconciliation successfully completed!"
 statusoutput<-data.frame(statuscode=statuscode, statusmessage=statusmessage)

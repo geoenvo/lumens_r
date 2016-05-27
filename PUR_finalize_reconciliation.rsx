@@ -1,8 +1,10 @@
-##[PUR]=group
+##Alpha - PUR=group
+##proj.file=string
 ##recon_file=vector
 ##unresolved_table=string
 ##statusoutput=output table
 
+#=Load library
 library(grid)
 library(gridExtra)
 library(rasterVis)
@@ -11,26 +13,20 @@ library(RColorBrewer)
 library(rtf)
 library(foreign)
 
-#Read LUMENS log file
-user_temp_folder<-Sys.getenv("TEMP")
-if(user_temp_folder=="") {
-  user_temp_folder<-Sys.getenv("TMP")
-}
-LUMENS_path_user <- paste(user_temp_folder,"/LUMENS/LUMENS.log", sep="")
-log.file<-read.table(LUMENS_path_user, header=FALSE, sep=",")
-proj.file<-paste(log.file[1,1], "/", log.file[1,2],"/",log.file[1,2], ".lpj", sep="")
+#=Load active project
 load(proj.file)
 
-#Set PUR directory
-working_directory<-paste(log.file[1,1], "/", log.file[1,2],"/PUR/PUR_analysis_",PUR.index, sep="")
+#=Set PUR directory
+working_directory<-paste(dirname(proj.file),"/PUR/PUR_analysis_",PUR.index, sep="")
 setwd(working_directory)
 
 time_start<-paste(eval(parse(text=(paste("Sys.time ()")))), sep="")
 
+#=Load reconciliation phase 1 and attribute table
 wd_usertemp<-paste(working_directory,"/temp", sep="")
 sa<-recon_file
 attribute<-paste(working_directory, "/PUR_attribute.csv", sep="")
-
+# get resolved action and merge with attribute table 
 attribute<- read.table(attribute, header=TRUE, sep=",")
 unresolved_edit<- read.table(unresolved_table, header=TRUE, sep=",")
 unresolved_edit.c1<-as.data.frame(unresolved_edit$ID) 
@@ -61,10 +57,10 @@ colnames(unique_class)[1]<-"resolved"
 countrow<-nrow(unique_class)
 unique_class$PU_ID<-seq(countrow)
 attribute.edit<-merge(attribute.edit, unique_class, by="resolved")
-
+# save PUR final reconciliation shapefile
 sa<-merge(sa,attribute.edit, by="PU_name", all=TRUE)
 writeOGR(sa, dsn=working_directory, "PUR_final_reconciliation", driver="ESRI Shapefile", overwrite_layer=TRUE, delete_dsn=TRUE)
-
+# and create the raster version 
 shp_dir<-paste(working_directory,"/", "PUR_final_reconciliation", ".shp", sep="")
 file_out<-paste(working_directory,"/", "PUR_final_reconciliation.tif", sep="")
 kolom_data<-paste('PU_ID')
@@ -76,15 +72,15 @@ if (file.exists("C:/Program Files (x86)/LUMENS/bin/gdal_rasterize.exe")){
 }
 osgeo_comm<-paste(gdalraster,shp_dir, file_out,"-a",kolom_data, "-tr", res, res, "-a_nodata 255 -ot Byte", sep=" ")
 system(osgeo_comm)
-
+# create summary of final reconciliation
 test4<-raster(file_out)
 test4 <- ratify(test4, filename='PUR.grd', count=TRUE, overwrite=TRUE)
 summary_PUR<-as.data.frame(levels(test4))
 colnames(summary_PUR)[1]<-"PU_ID"
 summary_PUR<-merge(summary_PUR,unique_class, by="PU_ID")
 
-#FUNCTION FOR PLOTTING
-#Create Map for report
+#=Create Map for report
+# arrange numerous colors with RColorBrewer
 myColors1 <- brewer.pal(9,"Set1")
 myColors2 <- brewer.pal(8,"Accent")
 myColors3 <- brewer.pal(12,"Paired")
@@ -94,7 +90,6 @@ myColors6 <- brewer.pal(8, "Dark2")
 myColors7 <- brewer.pal(11, "Spectral")
 myColors  <-c(myColors1,myColors7, myColors2, myColors3, myColors4, myColors5, myColors6)
 rm(myColors1,myColors7, myColors2, myColors3, myColors4, myColors5, myColors6)
-
 
 #Plot 6 (Peta hasil rekonsiliasi)
 PUR.Rec.lab<-unique_class
@@ -123,8 +118,7 @@ Rec.phs.bar<-ggplot(data=area_rec1, aes(x=resolved, y=COUNT, fill=resolved)) + g
   theme(axis.title.x=element_blank(), axis.text.x = element_text(size=8),
         panel.grid.major=element_blank(), panel.grid.minor=element_blank())
 
-
-#rtf report file
+#write report
 title<-"\\b\\fs40 LUMENS-PUR Project Report\\b0\\fs20"
 sub_title<-"\\b\\fs32 REKONSILIASI UNIT PERENCANAAN MENGGUNAKAN DATA ACUAN\\b0\\fs20"
 date<-paste("Date : ", date(), sep="")
@@ -159,13 +153,14 @@ addPlot.RTF(rtffile, plot.fun=plot, width=6.7, height=4.73, res=150, Rec.phs.bar
 addNewLine(rtffile)
 
 done(rtffile)
-
+# save summary as PUR final lookup table
 summary_PUR$COUNT<-NULL
 write.table(summary_PUR, "PUR_final_lookup_table.csv", quote=FALSE, row.names=FALSE, sep=",")
 
 command<-paste("start ", "winword ", working_directory, "/LUMENS_PUR_FINAL_report.lpr", sep="" )
 shell(command)
 
+#=Writing final status message (code, message)
 statuscode<-1
 statusmessage<-"PUR final reconciliation successfully completed!"
 statusoutput<-data.frame(statuscode=statuscode, statusmessage=statusmessage)
