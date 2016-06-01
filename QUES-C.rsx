@@ -565,12 +565,14 @@ for (i in 1:length(zone_lookup$ID)){
   write.dbf(seq_matrix_z,paste("Sequestration_Matrix_Zone_",i,sep=""))
 }
 # resave index of QUES-C
+lut.index<-lut.index+1
 eval(parse(text=(paste("QUESC_database_", pu_name, "_", T1, "_", T2, " <- data_merge", sep=""))))
-resave(QUESC.index, file=proj.file)
+resave(QUESC.index, lut.index, file=proj.file)
 
 #=Create lazyLoad database
 setwd(data_dir)
 category<-"lookup_table"
+csv_file<-paste(data_dir,"csv_lookup_table.csv", sep="")
 eval(parse(text=(paste("add_data<-data.frame(TBL_DATA='lut", lut.index,"', TBL_NAME='QUESC_database_", pu_name, "_", T1, "_", T2, "', row.names=NULL)", sep=""))))
 list_of_data_lut<-rbind(list_of_data_lut,add_data)
 # save list of data lookup table
