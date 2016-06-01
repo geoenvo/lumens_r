@@ -34,7 +34,7 @@ time_start<-paste(eval(parse(text=(paste("Sys.time ()")))), sep="")
 # raising index then create working directory based on index
 PUR.index=PUR.index+1
 resave(PUR.index, file=proj.file)
-wd_user<-paste(dirname(proj.file), "/PUR/PUR_analysis_", PUR.index, sep="")
+wd_user<-paste(dirname(proj.file), "/PUR/", PUR.index, "_PUR_analysis", sep="")
 dir.create(wd_user, mode="0777")
 setwd(wd_user)
 

@@ -30,7 +30,7 @@ if(file.exists(csv_file)){
 write.table(list_of_data_lut, csv_file, quote=FALSE, row.names=FALSE, sep=",")
 
 category<-"lookup_table"
-#check existing rdata
+#check existing rdata and list of data lookup table (list_of_data_lut)
 file_rdata<-paste(data_dir, category, sep="")
 check_rdata<-file.exists(file_rdata)
 if(check_rdata){

@@ -69,7 +69,7 @@ if(type==0){
   }
   write.table(list_of_data_luc, csv_file, quote=FALSE, row.names=FALSE, sep=",")
   
-  #check existing rdata
+  #check existing rdata and list of data land use/cover (list_of_data_luc)
   file_rdata<-paste(data_dir, category, sep="")
   check_rdata<-file.exists(file_rdata)
   if(check_rdata){
@@ -113,7 +113,7 @@ if(type==0){
   }
   write.table(list_of_data_pu, csv_file, quote=FALSE, row.names=FALSE, sep=",")
 
-  #check existing rdata
+  #check existing rdata and list of data planning unit (list_of_data_pu)
   file_rdata<-paste(data_dir, category, sep="")
   check_rdata<-file.exists(file_rdata)
   if(check_rdata){
@@ -153,7 +153,7 @@ if(type==0){
   }
   write.table(list_of_data_f, csv_file, quote=FALSE, row.names=FALSE, sep=",")
 
-  #check existing rdata
+  #check existing rdata and list of data factor (list_of_data_f)
   file_rdata<-paste(data_dir, category, sep="")
   check_rdata<-file.exists(file_rdata)
   if(check_rdata){

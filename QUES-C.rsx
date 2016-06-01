@@ -1,4 +1,5 @@
 ##Alpha - QUES=group
+##proj.file=string
 ##landuse_1=string
 ##landuse_2=string
 ##planning_unit=string
@@ -6,6 +7,7 @@
 ##raster.nodata=number 0
 ##statusoutput=output table
 
+#=Load library
 library(tiff)
 library(foreign)
 library(rasterVis)
@@ -21,30 +23,21 @@ library(rtf)
 
 time_start<-paste(eval(parse(text=(paste("Sys.time ()")))), sep="")
 
-#CREATE FUNCTION TO GET OBJECT FROM RDB
-get_from_rdb <- function(symbol, filebase, envir =parent.frame()){
-  lazyLoad(filebase = filebase, envir = envir, filter = function(x) x == symbol)
-}
-
-#READ LUMENS LOG FILE
-user_temp_folder<-Sys.getenv("TEMP")
-if(user_temp_folder=="") {
-  user_temp_folder<-Sys.getenv("TMP")
-}
-LUMENS_path_user <- paste(user_temp_folder,"/LUMENS/LUMENS.log", sep="")
-LUMENS_temp_user <- paste(user_temp_folder,"/LUMENS/temp", sep="")
-dir.create(LUMENS_temp_user, mode="0777")
-log.file<-read.table(LUMENS_path_user, header=FALSE, sep=",")
-proj.file<-paste(log.file[1,1], "/", log.file[1,2],"/",log.file[1,2], ".lpj", sep="")
+#=Load active project
 load(proj.file)
 
-#SET PATH OF DATA DIRECTORY 
+#=Set working directory to DATA folder
 data_dir<-paste(dirname(proj.file), "/DATA/", sep="")
 
+#=Retrieve all list of data that are going to be used
+# list_of_data_luc ==> list of data land use/cover 
+# list_of_data_pu ==> list of data planning unit
+# list_of_data_f ==> list of data factor
+# list_of_data_lut ==> list of data lookup table
 get_from_rdb(symbol=paste("list_of_data_luc"), filebase=paste(data_dir, "land_use_cover", sep=""))
 get_from_rdb(symbol=paste("list_of_data_pu"), filebase=paste(data_dir, "planning_unit", sep=""))
 get_from_rdb(symbol=paste("list_of_data_lut"), filebase=paste(data_dir, "lookup_table", sep=""))
-
+# return the selected data from the list
 data_luc1<-list_of_data_luc[which(list_of_data_luc$RST_NAME==landuse_1),]
 data_luc2<-list_of_data_luc[which(list_of_data_luc$RST_NAME==landuse_2),]
 data_pu<-list_of_data_pu[which(list_of_data_pu$RST_NAME==planning_unit),]
@@ -53,229 +46,15 @@ data_lut<-list_of_data_lut[which(list_of_data_lut$TBL_NAME==lookup_c),]
 T1<-data_luc1$PERIOD
 T2<-data_luc2$PERIOD
 
-#==Check LUMENS QUES-C log file===
-# if (file.exists(paste(user_temp_folder,"/LUMENS/LUMENS_quesc.log", sep=""))) {
-#   log.quesc<-read.table(paste(user_temp_folder,"/LUMENS/LUMENS_quesc.log", sep=""), sep=",", header=T, row.names=1)
-#   print("LUMENS QUES-C log file is available")
-# } else {
-#   log.quesc<-data.frame(IDX=NA, 
-#                         MODULE=NA, 
-#                         DATE=NA,
-#                         TIME=NA,
-#                         LU1=NA,
-#                         LU2=NA,
-#                         PU=NA,
-#                         T1=NA,
-#                         T2=NA,
-#                         LOOKUP_LC=NA,
-#                         LOOKUP_C=NA,
-#                         LOOKUP_ZONE=NA,
-#                         NODATA=NA,
-#                         OUTPUT_FOLDER=NA, row.names=NULL)
-# }
-
-#====CREATE RUNNING RECORD====
-# check_record <- paste(T1, T2, pu_selected, sep="")
-# if(exists("run_record")){
-#   rec_selected <- run_record[which(run_record$rec==check_record & run_record$modul=="QUESC"),]
-#   n_rec <- nrow(rec_selected)
-#   if(n_rec==0){
-#     new_rec <- data.frame(check_record, T1, T2, pu_selected, "QUESC")
-#     colnames(new_rec)[1] <- "rec"
-#     colnames(new_rec)[2] <- "T1"
-#     colnames(new_rec)[3] <- "T2"
-#     colnames(new_rec)[4] <- "pu_selected"    
-#     colnames(new_rec)[5] <- "modul"    
-#     run_record <- rbind(run_record, new_rec)
-#   } else {
-#     #print all existing element (rtf, dbf, carbon1, carbon2, sequestration, emission)
-#     QUESC.index<-QUESC.index+1
-#     eval(parse(text=(paste("pu_name<-names(",pu[1],")", sep=''))))
-#     eval(parse(text=(paste("landuse1<-", data[1,1], sep=""))))
-#     eval(parse(text=(paste("landuse2<-", data[2,1], sep=""))))
-#     lookup_c<- read.table(Look_up_table, header=TRUE, sep=",")
-#     
-#     dirQUESC<-paste(dirname(proj.file), "/QUES/QUES-C/QUESC_analysis_",pu_name,"_",data[1,2],"_",data[2,2], "_", QUESC.index, sep="")
-#     dir.create(dirQUESC, mode="0777")
-#     setwd(dirQUESC) 
-#     
-#     eval(parse(text=(paste("done(rtffileQUESC_", rec_selected$rec, ")", sep=""))))
-#     
-#     NAvalue(landuse1)<-raster.nodata
-#     NAvalue(landuse2)<-raster.nodata
-#     rcl.m.c1<-as.matrix(lookup_c[,1])
-#     rcl.m.c2<-as.matrix(lookup_c[,3])
-#     rcl.m<-cbind(rcl.m.c1,rcl.m.c2)
-#     carbon1<-reclassify(landuse1, rcl.m)
-#     carbon2<-reclassify(landuse2, rcl.m)
-#     chk_em<-carbon1>carbon2
-#     chk_sq<-carbon1<carbon2
-#     emission<-((carbon1-carbon2)*3.67)*chk_em
-#     sequestration<-((carbon2-carbon1)*3.67)*chk_sq
-#     
-#     writeRaster(carbon1, filename="carbon1.tif", format="GTiff", overwrite=TRUE)
-#     writeRaster(carbon2, filename="carbon2.tif", format="GTiff", overwrite=TRUE)
-#     writeRaster(emission, filename="emission.tif", format="GTiff", overwrite=TRUE)
-#     writeRaster(sequestration, filename="sequestration.tif", format="GTiff", overwrite=TRUE)
-#     qmlcarbon1<-paste(dirQUESC, "/carbon1.qml", sep="")
-#     qmlcarbon2<-paste(dirQUESC, "/carbon2.qml", sep="")
-#     qmlemisi<-paste(dirQUESC, "/emission.qml", sep="")
-#     qmlseq<-paste(dirQUESC, "/sequestration.qml", sep="")
-#     
-#     sink(qmlcarbon1)
-#     cat("<!DOCTYPE qgis PUBLIC 'http://mrcc.com/qgis.dtd' 'SYSTEM'>")
-#     cat('<qgis version="2.0.0-Taoge" minimumScale="0" maximumScale="1e+08" hasScaleBasedVisibilityFlag="0">')
-#     cat('  <pipe>')
-#     cat('    <rasterrenderer opacity="1" alphaBand="-1" classificationMax="296.703" classificationMinMaxOrigin="CumulativeCutFullExtentEstimated" band="1" classificationMin="0.297" type="singlebandpseudocolor">')
-#     cat('      <rasterTransparency/>')
-#     cat('      <rastershader>')
-#     cat('        <colorrampshader colorRampType="INTERPOLATED" clip="0">')
-#     cat('          <item alpha="255" value="5" label="0-5" color="#f7fcf5"/>')
-#     cat('          <item alpha="255" value="5" label="0-5" color="#f7fcf5"/>')
-#     cat('          <item alpha="255" value="25" label="10-25" color="#bfe5b8"/>')
-#     cat('          <item alpha="255" value="50" label="25-50" color="#93d290"/>')
-#     cat('          <item alpha="255" value="100" label="50-100" color="#5fba6c"/>')
-#     cat('          <item alpha="255" value="200" label="100-200" color="#329b51"/>')
-#     cat('          <item alpha="255" value="300" label="200-300" color="#0c7734"/>')
-#     cat('          <item alpha="255" value="400" label="300-400" color="#00441b"/>')
-#     cat('        </colorrampshader>')
-#     cat('      </rastershader>')
-#     cat('    </rasterrenderer>')
-#     cat('    <brightnesscontrast brightness="0" contrast="0"/>')
-#     cat('    <huesaturation colorizeGreen="128" colorizeOn="0" colorizeRed="255" colorizeBlue="128" grayscaleMode="0" saturation="0" colorizeStrength="100"/>')
-#     cat('    <rasterresampler maxOversampling="2"/>')
-#     cat('  </pipe>')
-#     cat('  <blendMode>0</blendMode>')
-#     cat('</qgis>')
-#     sink()
-#     
-#     sink(qmlcarbon2)
-#     cat("<!DOCTYPE qgis PUBLIC 'http://mrcc.com/qgis.dtd' 'SYSTEM'>")
-#     cat('<qgis version="2.0.0-Taoge" minimumScale="0" maximumScale="1e+08" hasScaleBasedVisibilityFlag="0">')
-#     cat('  <pipe>')
-#     cat('    <rasterrenderer opacity="1" alphaBand="-1" classificationMax="296.703" classificationMinMaxOrigin="CumulativeCutFullExtentEstimated" band="1" classificationMin="0.297" type="singlebandpseudocolor">')
-#     cat('      <rasterTransparency/>')
-#     cat('      <rastershader>')
-#     cat('        <colorrampshader colorRampType="INTERPOLATED" clip="0">')
-#     cat('          <item alpha="255" value="5" label="0-5" color="#f7fcf5"/>')
-#     cat('          <item alpha="255" value="5" label="0-5" color="#f7fcf5"/>')
-#     cat('          <item alpha="255" value="25" label="10-25" color="#bfe5b8"/>')
-#     cat('          <item alpha="255" value="50" label="25-50" color="#93d290"/>')
-#     cat('          <item alpha="255" value="100" label="50-100" color="#5fba6c"/>')
-#     cat('          <item alpha="255" value="200" label="100-200" color="#329b51"/>')
-#     cat('          <item alpha="255" value="300" label="200-300" color="#0c7734"/>')
-#     cat('          <item alpha="255" value="400" label="300-400" color="#00441b"/>')
-#     cat('        </colorrampshader>')
-#     cat('      </rastershader>')
-#     cat('    </rasterrenderer>')
-#     cat('    <brightnesscontrast brightness="0" contrast="0"/>')
-#     cat('    <huesaturation colorizeGreen="128" colorizeOn="0" colorizeRed="255" colorizeBlue="128" grayscaleMode="0" saturation="0" colorizeStrength="100"/>')
-#     cat('    <rasterresampler maxOversampling="2"/>')
-#     cat('  </pipe>')
-#     cat('  <blendMode>0</blendMode>')
-#     cat('</qgis>')
-#     sink()
-#     
-#     sink(qmlemisi)
-#     cat("<!DOCTYPE qgis PUBLIC 'http://mrcc.com/qgis.dtd' 'SYSTEM'>")
-#     cat('<qgis version="2.0.0-Taoge" minimumScale="0" maximumScale="1e+08" hasScaleBasedVisibilityFlag="0">')
-#     cat('<pipe>')
-#     cat('<rasterrenderer opacity="1" alphaBand="-1" classificationMax="262.787" classificationMinMaxOrigin="CumulativeCutFullExtentEstimated" band="1" classificationMin="0" type="singlebandpseudocolor">')
-#     cat('<rasterTransparency/>')
-#     cat('<rastershader>')
-#     cat('<colorrampshader colorRampType="INTERPOLATED" clip="0">')
-#     cat('<item alpha="255" value="0" label="0.000000" color="#fff5f0"/>')
-#     cat('<item alpha="255" value="34.1623" label="34.162310" color="#fee0d3"/>')
-#     cat('<item alpha="255" value="68.3246" label="68.324620" color="#fcbda4"/>')
-#     cat('<item alpha="255" value="102.487" label="102.486930" color="#fc9677"/>')
-#     cat('<item alpha="255" value="136.649" label="136.649240" color="#fb7050"/>')
-#     cat('<item alpha="255" value="170.812" label="170.811550" color="#f14431"/>')
-#     cat('<item alpha="255" value="204.974" label="204.973860" color="#d32020"/>')
-#     cat('<item alpha="255" value="236.508" label="236.508300" color="#ac1016"/>')
-#     cat('<item alpha="255" value="262.787" label="262.787000" color="#67000d"/>')
-#     cat('</colorrampshader>')
-#     cat('</rastershader>')
-#     cat('</rasterrenderer>')
-#     cat('<brightnesscontrast brightness="0" contrast="0"/>')
-#     cat('<huesaturation colorizeGreen="128" colorizeOn="0" colorizeRed="255" colorizeBlue="128" grayscaleMode="0" saturation="0" colorizeStrength="100"/>')
-#     cat('<rasterresampler maxOversampling="2"/>')
-#     cat('</pipe>')
-#     cat('<blendMode>0</blendMode>')
-#     cat('</qgis>')
-#     sink()
-#     
-#     sink(qmlseq)
-#     cat("<!DOCTYPE qgis PUBLIC 'http://mrcc.com/qgis.dtd' 'SYSTEM'>")
-#     cat('<qgis version="2.0.0-Taoge" minimumScale="0" maximumScale="1e+08" hasScaleBasedVisibilityFlag="0">')
-#     cat('<pipe>')
-#     cat('<rasterrenderer opacity="1" alphaBand="-1" classificationMax="262.787" classificationMinMaxOrigin="CumulativeCutFullExtentEstimated" band="1" classificationMin="0" type="singlebandpseudocolor">')
-#     cat('<rasterTransparency/>')
-#     cat('<rastershader>')
-#     cat('<colorrampshader colorRampType="INTERPOLATED" clip="0">')
-#     cat('<item alpha="255" value="0" label="0.000000" color="#fff5f0"/>')
-#     cat('<item alpha="255" value="34.1623" label="34.162310" color="#fee0d3"/>')
-#     cat('<item alpha="255" value="68.3246" label="68.324620" color="#fcbda4"/>')
-#     cat('<item alpha="255" value="102.487" label="102.486930" color="#fc9677"/>')
-#     cat('<item alpha="255" value="136.649" label="136.649240" color="#fb7050"/>')
-#     cat('<item alpha="255" value="170.812" label="170.811550" color="#f14431"/>')
-#     cat('<item alpha="255" value="204.974" label="204.973860" color="#d32020"/>')
-#     cat('<item alpha="255" value="236.508" label="236.508300" color="#ac1016"/>')
-#     cat('<item alpha="255" value="262.787" label="262.787000" color="#67000d"/>')
-#     cat('</colorrampshader>')
-#     cat('</rastershader>')
-#     cat('</rasterrenderer>')
-#     cat('<brightnesscontrast brightness="0" contrast="0"/>')
-#     cat('<huesaturation colorizeGreen="128" colorizeOn="0" colorizeRed="255" colorizeBlue="128" grayscaleMode="0" saturation="0" colorizeStrength="100"/>')
-#     cat('<rasterresampler maxOversampling="2"/>')
-#     cat('</pipe>')
-#     cat('<blendMode>0</blendMode>')
-#     cat('</qgis>')
-#     sink()
-#     
-#     eval(parse(text=(paste("data_merge<-QUESC_database_", pu_name,"_", T1, "_", T2, sep=''))))
-#     write.dbf(data_merge, "QUES-C_database.dbf")
-#     
-#     add.log<-data.frame(IDX=(QUESC.index), 
-#                         MODULE="QUES-C", 
-#                         DATE=format(Sys.time(), "%d-%m%-%Y"),
-#                         TIME=format(Sys.time(), "%X"),
-#                         LU1=data[1,1],
-#                         LU2=data[2,1],
-#                         PU=pu[1],
-#                         T1=T1,
-#                         T2=T2,
-#                         LOOKUP_LC="From DB",
-#                         LOOKUP_C=Look_up_table,
-#                         LOOKUP_ZONE="From DB",
-#                         NODATA=raster.nodata,
-#                         OUTPUT_FOLDER=dirQUESC, row.names=NULL)
-#     log.quesc<-na.omit(rbind(log.quesc,add.log))
-#     write.csv(log.quesc, paste(user_temp_folder,"/LUMENS/LUMENS_quesc.log", sep=""))
-#     
-#     resave(QUESC.index, file=proj.file)
-#     command<-paste("start ", "winword ", dirQUESC, "/LUMENS_QUES-C_report.lpr", sep="" )
-#     shell(command)
-#     
-#     quit()  
-#   }
-# } else {
-#   run_record <- data.frame(check_record, T1, T2, pu_selected, "QUESC")
-#   colnames(run_record)[1] <- "rec"
-#   colnames(run_record)[2] <- "T1"
-#   colnames(run_record)[3] <- "T2"
-#   colnames(run_record)[4] <- "pu_selected"
-#   colnames(run_record)[5] <- "modul"
-# }
-
-#====Set Working Directory====
+#=Set Working Directory
 pu_name<-data_pu$RST_NAME 
 QUESC.index<-QUESC.index+1
-dirQUESC<-paste(dirname(proj.file), "/QUES/QUES-C/QUESC_analysis_",pu_name,"_",T1,"_",T2, "_", QUESC.index, sep="")
+dirQUESC<-paste(dirname(proj.file), "/QUES/QUES-C/", QUESC.index, "_QUESC_analysis_", T1, "_", T2, "_", pu_name, sep="")
 dir.create(dirQUESC, mode="0777")
 setwd(dirQUESC) 
 
-#===Load Datasets====
-#planning unit
+#=Set initial variables
+# planning unit
 if (data_pu$RST_DATA=="ref") {
   get_from_rdb(symbol=paste(data_pu$RST_DATA), filebase=paste(data_dir, "planning_unit", sep=""))
   ref[ref==0]<-NA
@@ -288,17 +67,17 @@ if (data_pu$RST_DATA=="ref") {
   get_from_rdb(symbol=paste(data_pu$LUT_NAME), filebase=paste(data_dir, "planning_unit", sep=""))
   eval(parse(text=(paste("lookup_z<-", data_pu$LUT_NAME, sep=""))))  
 }
-#landuse first period
+# landuse first time period
 get_from_rdb(symbol=paste(data_luc1$RST_DATA), filebase=paste(data_dir, "land_use_cover", sep=""))
 eval(parse(text=(paste("landuse1<-", data_luc1$RST_DATA, sep=""))))
 landuse1[landuse1==0]<-NA
-#landuse second period
+# landuse second time period
 get_from_rdb(symbol=paste(data_luc2$RST_DATA), filebase=paste(data_dir, "land_use_cover", sep=""))
 eval(parse(text=(paste("landuse2<-", data_luc2$RST_DATA, sep=""))))
 landuse2[landuse2==0]<-NA
-#landcover lookup table
+# landcover lookup table
 get_from_rdb(symbol=paste(data_lut$TBL_DATA), filebase=paste(data_dir, "lookup_table", sep=""))
-#set lookup table
+# set lookup table
 eval(parse(text=(paste("lookup_c<-", data_lut$TBL_DATA, sep=""))))
 lookup_c<-lookup_c[which(lookup_c[1] != raster.nodata),]
 lookup_lc<-lookup_c
@@ -311,7 +90,7 @@ writeRaster(ref, filename="ref.tif", format="GTiff", overwrite=TRUE)
 ref<-raster("ref.tif")
 names(ref)<-ref_name
 
-#====projection handling====
+#=Projection handling
 if (grepl("+units=m", as.character(ref@crs))){
   print("Raster maps have projection in meter unit")
   Spat_res<-res(ref)[1]*res(ref)[2]/10000
@@ -328,7 +107,7 @@ if (grepl("+units=m", as.character(ref@crs))){
   quit()
 }
 
-#====Check Peat Data====
+#=Check peat data
 # check_peat<-as.data.frame(as.character(ls(pattern="peat.index")))
 # if(nrow(check_peat)!=0){
 #   peat_map<-Peat_1*100
@@ -357,7 +136,7 @@ if (grepl("+units=m", as.character(ref@crs))){
 #   lut.pu_peat<-legend_zone_peat
 # } 
 
-#====Set Project Properties====
+#=Set project properties
 title=location
 tab_title<-as.data.frame(title)
 period1=T1
@@ -368,7 +147,7 @@ proj_prop$period1<-period1
 proj_prop$period2<-period2
 proj_prop$period <- do.call(paste, c(proj_prop[c("period1", "period2")], sep = " - "))
 
-#===Create cross-tabulation====
+#=Create cross-tabulation
 R<-(zone*1) + (ref*100^1)+ (landuse1*100^2) + (landuse2*100^3)
 lu.db<-as.data.frame(freq(R))
 lu.db<-na.omit(lu.db)
@@ -410,7 +189,7 @@ rm(lu.db, original_data)
 refMelt<-melt(data = data_merge, id.vars=c('REF'), measure.vars=c('COUNT'))
 refArea<-dcast(data = refMelt, formula = REF ~ ., fun.aggregate = sum)
 
-#====Carbon Accounting Process====
+#=Carbon accounting process
 NAvalue(landuse1)<-raster.nodata
 NAvalue(landuse2)<-raster.nodata
 rcl.m.c1<-as.matrix(lookup_lc[,1])
@@ -423,7 +202,7 @@ chk_sq<-carbon1<carbon2
 emission<-((carbon1-carbon2)*3.67)*chk_em
 sequestration<-((carbon2-carbon1)*3.67)*chk_sq
 
-#===Modify Carbon Stock Density for Each Time Series====
+#=Modify carbon stock density for each time series
 data_merge$ck_em<-data_merge$CARBON_t1>data_merge$CARBON_t2
 data_merge$ck_sq<-data_merge$CARBON_t1<data_merge$CARBON_t2
 data_merge$em<-(data_merge$CARBON_t1-data_merge$CARBON_t2)*data_merge$ck_em*data_merge$COUNT*3.67
@@ -432,7 +211,7 @@ data_merge$LU_CHG <- do.call(paste, c(data_merge[c("LC_t1", "LC_t2")], sep = " t
 data_merge$null<-0
 data_merge$nullCek<-data_merge$em+data_merge$sq
 
-#===Generate area_zone Lookup and Calculate Min Area
+#=Generate area_zone lookup and calculate min area
 area_zone<-melt(data = data_merge, id.vars=c('ZONE'), measure.vars=c('COUNT'))
 area_zone<-dcast(data = area_zone, formula = ZONE ~ ., fun.aggregate = sum)
 colnames(area_zone)[1]<-"ID"
@@ -443,14 +222,14 @@ colnames(lookup_z)[1]<-"ID"
 area_zone<-merge(area_zone, lookup_z, by="ID")
 area<-min(sum(area_zone$COUNT), sum(data_merge$COUNT))
 
-#====Generate administrative unit====
+#=Generate administrative unit
 colnames(refArea)[1]<-"ID"
 colnames(refArea)[2]<-"COUNT"
 colnames(p.admin.df)[1]<-"ID"
 colnames(p.admin.df)[2]<-"KABKOT"
 area_admin<-merge(refArea, p.admin.df, by="ID")
 
-#====Calculate Emission for each Planning Unit====
+#=Calculate emission for each planning unit
 zone_emission <- as.data.frame(zonal((Spat_res*emission),zone,'sum')) #adjust emission by actual raster area
 zone_sequestration <- as.data.frame(zonal((Spat_res*sequestration),zone,'sum'))#adjust sequestration by actual raster area
 colnames(zone_emission)[1] = "ID"
@@ -465,7 +244,7 @@ zone_carbon$Net_em_rate<-round((zone_carbon$Net_em/zone_carbon$COUNT/period), di
 zone_carbon$Sq_tot<-round(zone_carbon$Sq_tot, digits=3)
 #zone_carbon[,4:7]<-round(zone_carbon[,4:7], digits=3)
 
-#====Calculate Emission for each Administrative Unit====
+#=Calculate emission for each administrative unit====
 admin_emission <- as.data.frame(zonal((Spat_res*emission),ref,'sum')) #adjust emission by actual raster area
 admin_sequestration <- as.data.frame(zonal((Spat_res*sequestration),ref,'sum'))#adjust sequestration by actual raster area
 colnames(admin_emission)[1] = "ID"
@@ -478,7 +257,7 @@ admin_carbon$Net_em<-admin_carbon$Em_tot-admin_carbon$Sq_tot
 admin_carbon$Net_em_rate<-round((admin_carbon$Net_em/admin_carbon$COUNT/period), digits=3)
 admin_carbon$Sq_tot<-round(admin_carbon$Sq_tot, digits=3)
 
-#====Create Final Summary of Emission Calculation at Landscape Level
+#=Create final summary of emission calculation at landscape level
 fs_id<-c(1,2,3,4,5,6,7)
 fs_cat<-c("Period", "Total area", "Total Emisi (Ton CO2-eq)", "Total Sequestrasi (Ton CO2-eq)", "Emisi Bersih (Ton CO2-eq)", "Laju Emisi (Ton CO2-eq/tahun)","Laju emisi per-unit area (Ton CO2-eq/ha.tahun)")
 fs_em<-sum(zone_carbon$Em_tot)
@@ -491,8 +270,8 @@ fs_table<-data.frame(fs_id,fs_cat,fs_summary)
 fs_table$fs_summary<-as.character(fs_table$fs_summary)
 colnames(fs_table)<-c("ID", "Kategori", "Ringkasan")
 
-#====CREATE QuES-C Database====
-#====Zonal Statistics Database====
+#=Create QUES-C database
+#=Zonal statistics database
 lg<-length(unique(data_merge$ZONE))
 zone_lookup<-area_zone
 data_zone<-area_zone
@@ -509,12 +288,12 @@ for(a in 1:lg){
 data_zone$COUNT_ZONE<-NULL
 data_zone[,5:8]<-round(data_zone[,5:8],digits=3)
 
-#====Calculate Largest Source of Emission====
+#=Emission
+# calculate largest source of emission
 data_merge_sel <- data_merge[ which(data_merge$nullCek > data_merge$null),]
 order_sq <- as.data.frame(data_merge[order(-data_merge$sq),])
 order_em <- as.data.frame(data_merge[order(-data_merge$em),])
-
-#====Total Emission====
+# total emission
 tb_em_total<-as.data.frame(cbind(order_em$LU_CHG, as.data.frame(round(order_em$em, digits=3))))
 colnames(tb_em_total)<-c("LU_CHG", "em")
 tb_em_total<-aggregate(em~LU_CHG,data=tb_em_total,FUN=sum)
@@ -523,8 +302,7 @@ tb_em_total<-tb_em_total[order(-tb_em_total$em),]
 tb_em_total<-tb_em_total[c(3,1,2)]
 tb_em_total$Percentage<-as.numeric(format(round((tb_em_total$em / sum(tb_em_total$em) * 100),2), nsmall=2))
 tb_em_total_10<-head(tb_em_total,n=10)
-
-#====Zonal Emission====
+# zonal emission
 tb_em_zonal<-as.data.frame(NULL)
 for (i in 1:length(zone_lookup$ID)){
   tryCatch({
@@ -543,7 +321,8 @@ for (i in 1:length(zone_lookup$ID)){
 }
 rm(tb_em, tb_em_total, tb_em_z, tb_em_z_10)
 
-#====Total Sequestration====
+#=Sequestration
+# total sequestration
 tb_seq_total<-as.data.frame(cbind(order_sq$LU_CHG, as.data.frame(round(order_sq$sq, digits=3))))
 colnames(tb_seq_total)<-c("LU_CHG", "seq")
 tb_seq_total<-aggregate(seq~LU_CHG,data=tb_seq_total,FUN=sum)
@@ -552,8 +331,7 @@ tb_seq_total<-tb_seq_total[order(-tb_seq_total$seq),]
 tb_seq_total<-tb_seq_total[c(3,1,2)]
 tb_seq_total$Percentage<-as.numeric(format(round((tb_seq_total$seq / sum(tb_seq_total$seq) * 100),2), nsmall=2))
 tb_seq_total_10<-head(tb_seq_total,n=10)
-
-#====Zonal Sequestration====
+# zonal sequestration
 tb_seq_zonal<-as.data.frame(NULL)
 for (i in 1:length(zone_lookup$ID)){
   tryCatch({
@@ -572,7 +350,7 @@ for (i in 1:length(zone_lookup$ID)){
 }
 rm(tb_seq, tb_seq_total, tb_seq_z, tb_seq_z_10)
 
-#====Zonal Additional Statistics====
+#=Zonal additional statistics
 if (((length(unique(data_merge$ID_LC1)))>(length(unique(data_merge$ID_LC2))))){
   dimention<-length(unique(data_merge$ID_LC1))
   name.matrix<-cbind(as.data.frame(data_merge$ID_LC1), as.data.frame(data_merge$LC_t1))
@@ -589,7 +367,8 @@ if (((length(unique(data_merge$ID_LC1)))>(length(unique(data_merge$ID_LC2))))){
   name.matrix$LC_CODE<-toupper(abbreviate(name.matrix$LC, minlength=4, method="both"))
 }
 
-#====Zonal Emission matrix====
+#=Transition matrix
+# zonal emission matrix
 e.m.z<-matrix(0, nrow=dimention, ncol=dimention)
 em.matrix.zonal<-as.data.frame(NULL)
 for (k in 1:length(zone_lookup$ID)){
@@ -606,9 +385,7 @@ for (k in 1:length(zone_lookup$ID)){
 }
 colnames(em.matrix.zonal)<-c("ZONE","LC_CODE",as.vector(name.matrix$LC_CODE))
 rm(em.data, e.m.z, e.m.z.c)
-
-
-#====Total Emission matrix====
+# total emission matrix
 e.m<-matrix(0, nrow=dimention, ncol=dimention)
 for (i in 1:nrow(e.m)){
   for (j in 1:ncol(e.m)){
@@ -620,8 +397,7 @@ e.m<-as.data.frame(e.m)
 em.matrix.total<-as.data.frame(cbind(name.matrix$LC_CODE,e.m))
 colnames(em.matrix.total)<-c("LC_CODE",as.vector(name.matrix$LC_CODE))
 rm(em.data, e.m)
-
-#====Zonal Sequestration matrix====
+# zonal sequestration matrix
 s.m.z<-matrix(0, nrow=dimention, ncol=dimention)
 seq.matrix.zonal<-as.data.frame(NULL)
 for (k in 1:length(zone_lookup$ID)){
@@ -638,8 +414,7 @@ for (k in 1:length(zone_lookup$ID)){
 }
 colnames(seq.matrix.zonal)<-c("ZONE","LC_CODE",as.vector(name.matrix$LC_CODE))
 rm(seq.data, s.m.z, s.m.z.c)
-
-#====Total Sequestration matrix====
+# total sequestration matrix
 s.m<-matrix(0, nrow=dimention, ncol=dimention)
 for (i in 1:nrow(s.m)){
   for (j in 1:ncol(s.m)){
@@ -652,17 +427,10 @@ seq.matrix.total<-as.data.frame(cbind(name.matrix$LC_CODE,s.m))
 colnames(seq.matrix.total)<-c("LC_CODE",as.vector(name.matrix$LC_CODE))
 rm(seq.data, s.m, order_em, order_sq)
 
-#produce chart and map
-#par(mfrow=c(3,2))
-#plot(landuse1,main='Land Use Map t1')
-#plot(landuse2,main='Land Use Map t2')
-#plot(carbon1,main='Carbon Density Map t1')
-#plot(carbon2, main='Carbon Density Map t2')
-
-
-#====Export Analysis Result====
+#=Export analysis results (raster and qml)
 carbontiff1<-carbon1
 carbontiff2<-carbon2
+# save carbon, emission, and sequestration maps  
 writeRaster(carbon1, filename="carbon1.tif", format="GTiff", overwrite=TRUE)
 writeRaster(carbon2, filename="carbon2.tif", format="GTiff", overwrite=TRUE)
 writeRaster(emission, filename="emission.tif", format="GTiff", overwrite=TRUE)
@@ -671,7 +439,7 @@ qmlcarbon1<-paste(dirQUESC, "/carbon1.qml", sep="")
 qmlcarbon2<-paste(dirQUESC, "/carbon2.qml", sep="")
 qmlemisi<-paste(dirQUESC, "/emission.qml", sep="")
 qmlseq<-paste(dirQUESC, "/sequestration.qml", sep="")
-
+# qml for carbon t1
 sink(qmlcarbon1)
 cat("<!DOCTYPE qgis PUBLIC 'http://mrcc.com/qgis.dtd' 'SYSTEM'>")
 cat('<qgis version="2.0.0-Taoge" minimumScale="0" maximumScale="1e+08" hasScaleBasedVisibilityFlag="0">')
@@ -698,7 +466,7 @@ cat('  </pipe>')
 cat('  <blendMode>0</blendMode>')
 cat('</qgis>')
 sink()
-
+# qml for carbon t2
 sink(qmlcarbon2)
 cat("<!DOCTYPE qgis PUBLIC 'http://mrcc.com/qgis.dtd' 'SYSTEM'>")
 cat('<qgis version="2.0.0-Taoge" minimumScale="0" maximumScale="1e+08" hasScaleBasedVisibilityFlag="0">')
@@ -725,7 +493,7 @@ cat('  </pipe>')
 cat('  <blendMode>0</blendMode>')
 cat('</qgis>')
 sink()
-
+# qml for emission
 sink(qmlemisi)
 cat("<!DOCTYPE qgis PUBLIC 'http://mrcc.com/qgis.dtd' 'SYSTEM'>")
 cat('<qgis version="2.0.0-Taoge" minimumScale="0" maximumScale="1e+08" hasScaleBasedVisibilityFlag="0">')
@@ -753,7 +521,7 @@ cat('</pipe>')
 cat('<blendMode>0</blendMode>')
 cat('</qgis>')
 sink()
-
+# qml for sequestration
 sink(qmlseq)
 cat("<!DOCTYPE qgis PUBLIC 'http://mrcc.com/qgis.dtd' 'SYSTEM'>")
 cat('<qgis version="2.0.0-Taoge" minimumScale="0" maximumScale="1e+08" hasScaleBasedVisibilityFlag="0">')
@@ -781,14 +549,13 @@ cat('</pipe>')
 cat('<blendMode>0</blendMode>')
 cat('</qgis>')
 sink()
-
+# export to dbf file
 write.dbf(zone_carbon, "emission_by_zone.dbf")
 write.dbf(fs_table, "summary_QUES-C.dbf")
 write.dbf(data_merge, "QUES-C_database.dbf")
 write.dbf(data_zone, "Carbon_Summary.dbf")
 write.dbf(em.matrix.total,"Total_Emission_Matrix.dbf ")
 write.dbf(seq.matrix.total, "Total_Sequestration_Matrix.dbf")
-
 for (i in 1:length(zone_lookup$ID)){
   em_matrix_z<-em.matrix.zonal[which(em.matrix.zonal$ZONE == i),]
   em_matrix_z$ZONE<-NULL
@@ -797,8 +564,24 @@ for (i in 1:length(zone_lookup$ID)){
   write.dbf(em_matrix_z,paste("Emission_Matrix_Zone_",i,sep=""))
   write.dbf(seq_matrix_z,paste("Sequestration_Matrix_Zone_",i,sep=""))
 }
+# resave index of QUES-C
+eval(parse(text=(paste("QUESC_database_", pu_name, "_", T1, "_", T2, " <- data_merge", sep=""))))
+resave(QUESC.index, file=proj.file)
 
-#====Rearrange zone carbon====
+#=Create lazyLoad database
+setwd(data_dir)
+category<-"lookup_table"
+eval(parse(text=(paste("add_data<-data.frame(TBL_DATA='lut", lut.index,"', TBL_NAME='QUESC_database_", pu_name, "_", T1, "_", T2, "', row.names=NULL)", sep=""))))
+list_of_data_lut<-rbind(list_of_data_lut,add_data)
+# save list of data lookup table
+write.table(list_of_data_lut, csv_file, quote=FALSE, row.names=FALSE, sep=",")
+resave(list_of_data_lut, file=category)
+# create environment then makeLazyLoad
+e = local({load(category); environment()})
+tools:::makeLazyLoadDB(e, category)
+setwd(dirQUESC) 
+
+#=Rearrange zone carbon
 zone_carbon_pub<-zone_carbon
 colnames(zone_carbon_pub) <- c("ID", "Luas (Ha)", "Tutupan lahan", "Total emisi (Ton CO2/Ha)", "Total sekuestrasi(Ton CO2/Ha)", "Emisi bersih (Ton CO2/Ha)", "Laju emisi (Ton CO2/Ha.yr)")
 admin_carbon_pub<-admin_carbon
@@ -807,7 +590,9 @@ data_zone_pub<-data_zone
 data_zone_pub$Z_CODE<-NULL
 colnames(data_zone_pub) <- c("ID", "Luas (Ha)", "Unit Perencanaan", "Rerata Karbon Periode 1", "Rerata Karbon Periode 1", "Emisi bersih", "Laju emisi")
 
-#====Create Map for report====
+#=Create QUES-C Report (.lpr)
+# create maps and charts for report
+# arrange numerous colors with RColorBrewer
 myColors1 <- brewer.pal(9,"Set1")
 myColors2 <- brewer.pal(8,"Accent")
 myColors3 <- brewer.pal(12,"Paired")
@@ -817,8 +602,7 @@ myColors6 <- brewer.pal(8, "Dark2")
 myColors7 <- brewer.pal(11, "Spectral")
 myColors8 <- rev(brewer.pal(11, "RdYlGn"))
 myColors  <-c(myColors8,myColors5,myColors1, myColors2, myColors3, myColors4, myColors7, myColors8)
-
-#====Landuse 1 map====
+# land use/cover map first period
 myColors.lu <- myColors[1:length(unique(lookup_lc$ID))]
 lookup_lc$Colors<-myColors.lu
 lu1<-as.data.frame(unique(data_merge$ID_LC1))
@@ -836,8 +620,7 @@ plot.LU1<-gplot(landuse1, maxpixels=100000) + geom_raster(aes(fill=as.factor(val
          legend.text = element_text(size = 6),
          legend.key.height = unit(0.25, "cm"),
          legend.key.width = unit(0.25, "cm"))
-
-#====Landuse 2 map====
+# land use/cover map next period
 lu2<-as.data.frame(unique(data_merge$ID_LC2))
 colnames(lu2)<-"ID"
 lu2<-merge(lu2,lookup_lc, by="ID")
@@ -855,8 +638,7 @@ plot.LU2<-gplot(landuse2, maxpixels=100000) + geom_raster(aes(fill=as.factor(val
          legend.key.width = unit(0.25, "cm"))
 
 myColors  <-c(myColors5,myColors1, myColors2, myColors3, myColors4, myColors7, myColors6, myColors8)
-
-#====zone map====
+# zone
 myColors.Z <- myColors[1:length(unique(lookup_z$ID))]
 ColScale.Z<-scale_fill_manual(name="Kelas Unit Perencanaan", breaks=lookup_z$ID, labels=lookup_z$Z_NAME, values=myColors.Z)
 plot.Z<-gplot(zone, maxpixels=100000) + geom_raster(aes(fill=as.factor(value))) +
@@ -868,8 +650,7 @@ plot.Z<-gplot(zone, maxpixels=100000) + geom_raster(aes(fill=as.factor(value))) 
          legend.text = element_text(size = 6),
          legend.key.height = unit(0.25, "cm"),
          legend.key.width = unit(0.25, "cm"))
-
-#====admin map====
+# administrative 
 myColors.Admin <- myColors[1:(length(unique(p.admin.df$ID))+1)]
 ColScale.Admin<-scale_fill_manual(name="Wilayah Administratif", breaks=p.admin.df$ID, labels=p.admin.df$KABKOT, values=myColors.Admin)
 plot.Admin<-gplot(ref, maxpixels=100000) + geom_raster(aes(fill=as.factor(value))) +
@@ -884,7 +665,50 @@ plot.Admin<-gplot(ref, maxpixels=100000) + geom_raster(aes(fill=as.factor(value)
 
 rm(myColors7,myColors1, myColors2, myColors3, myColors4, myColors5, myColors6,myColors8)
 
-#====Average Zonal Carbon Rate t1====
+# carbon t1 map
+y<-ceiling( maxValue(carbon1)/100)
+y<-y*100
+plot.C1  <- gplot(carbon1, maxpixels=100000) + geom_raster(aes(fill=value)) + coord_equal() +
+  scale_fill_gradient(name="Kerapatan karbon",low = "#FFCC66", high="#003300",limits=c(0,y), breaks=c(0,10,20,50,100,200,300), guide="colourbar") +
+  theme(plot.title = element_text(lineheight= 5, face="bold")) +
+  theme( axis.title.x=element_blank(),axis.title.y=element_blank(),
+         panel.grid.major=element_blank(), panel.grid.minor=element_blank(),
+         legend.title = element_text(size=8),
+         legend.text = element_text(size = 7),
+         legend.key.height = unit(1.5, "cm"),
+         legend.key.width = unit(0.375, "cm"))
+# carbon t2 map
+plot.C2  <- gplot(carbon2, maxpixels=100000) + geom_raster(aes(fill=value)) + coord_equal() +
+  scale_fill_gradient(name="Kerapatan karbon",low = "#FFCC66", high="#003300",limits=c(0,y), breaks=c(0,10,20,50,100,200,300), guide="colourbar") +
+  theme(plot.title = element_text(lineheight= 5, face="bold")) +
+  theme( axis.title.x=element_blank(),axis.title.y=element_blank(),
+         panel.grid.major=element_blank(), panel.grid.minor=element_blank(),
+         legend.title = element_text(size=8),
+         legend.text = element_text(size = 7),
+         legend.key.height = unit(1.5, "cm"),
+         legend.key.width = unit(0.375, "cm"))
+# carbon emission map
+plot.E  <- gplot(emission, maxpixels=100000) + geom_raster(aes(fill=value)) + coord_equal() +
+  scale_fill_gradient(name="Emisi (ton CO2-eq)",low = "#FFCC66", high="#FF0000", guide="colourbar") +
+  theme(plot.title = element_text(lineheight= 5, face="bold")) +
+  theme( axis.title.x=element_blank(),axis.title.y=element_blank(),
+         panel.grid.major=element_blank(), panel.grid.minor=element_blank(),
+         legend.title = element_text(size=8),
+         legend.text = element_text(size = 8),
+         legend.key.height = unit(0.375, "cm"),
+         legend.key.width = unit(0.375, "cm"))
+# carbon sequestration map
+plot.S  <- gplot(sequestration, maxpixels=100000) + geom_raster(aes(fill=value)) + coord_equal() +
+  scale_fill_gradient(name="Sequestrasi (ton CO2-eq)",low = "#FFCC66", high="#000033", guide="colourbar") +
+  theme(plot.title = element_text(lineheight= 5, face="bold")) +
+  theme( axis.title.x=element_blank(),axis.title.y=element_blank(),
+         panel.grid.major=element_blank(), panel.grid.minor=element_blank(),
+         legend.title = element_text(size=8),
+         legend.text = element_text(size = 8),
+         legend.key.height = unit(0.375, "cm"),
+         legend.key.width = unit(0.375, "cm"))
+
+# average zonal carbon rate t1
 rcl.m.c1<-as.matrix(data_zone[,1])
 rcl.m.c2<-as.matrix(data_zone[,5])
 rcl.m<-cbind(rcl.m.c1,rcl.m.c2)
@@ -899,8 +723,7 @@ plot.Z.Avg.C.t1<-gplot(Z.Avg.C.t1, maxpixels=100000) + geom_raster(aes(fill=valu
          legend.text = element_text(size = 8),
          legend.key.height = unit(0.375, "cm"),
          legend.key.width = unit(0.375, "cm"))
-
-#====Average Zonal Carbon Rate t2====
+# average zonal carbon rate t2
 rcl.m.c1<-as.matrix(data_zone[,1])
 rcl.m.c2<-as.matrix(data_zone[,6])
 rcl.m<-cbind(rcl.m.c1,rcl.m.c2)
@@ -915,8 +738,7 @@ plot.Z.Avg.C.t2<-gplot(Z.Avg.C.t2, maxpixels=100000) + geom_raster(aes(fill=valu
          legend.text = element_text(size = 8),
          legend.key.height = unit(0.375, "cm"),
          legend.key.width = unit(0.375, "cm"))
-
-#====Average Zonal Emission Rate====
+# average zonal emission rate
 rcl.m.c1<-as.matrix(data_zone[,1])
 rcl.m.c2<-as.matrix(data_zone[,7])
 rcl.m<-cbind(rcl.m.c1,rcl.m.c2)
@@ -931,8 +753,7 @@ plot.Z.Avg.em<-gplot(Z.Avg.em, maxpixels=100000) + geom_raster(aes(fill=value)) 
          legend.text = element_text(size = 8),
          legend.key.height = unit(0.375, "cm"),
          legend.key.width = unit(0.375, "cm"))
-
-#====Average Zonal Sequestration Rate====
+# average zonal sequestration rate
 rcl.m.c1<-as.matrix(data_zone[,1])
 rcl.m.c2<-as.matrix(data_zone[,8])
 rcl.m<-cbind(rcl.m.c1,rcl.m.c2)
@@ -947,70 +768,21 @@ plot.Z.Avg.sq<-gplot(Z.Avg.sq, maxpixels=100000) + geom_raster(aes(fill=value)) 
          legend.text = element_text(size = 8),
          legend.key.height = unit(0.375, "cm"),
          legend.key.width = unit(0.375, "cm"))
-
-#====Carbon 1 map====
-y<-ceiling( maxValue(carbon1)/100)
-y<-y*100
-plot.C1  <- gplot(carbon1, maxpixels=100000) + geom_raster(aes(fill=value)) + coord_equal() +
-  scale_fill_gradient(name="Kerapatan karbon",low = "#FFCC66", high="#003300",limits=c(0,y), breaks=c(0,10,20,50,100,200,300), guide="colourbar") +
-  theme(plot.title = element_text(lineheight= 5, face="bold")) +
-  theme( axis.title.x=element_blank(),axis.title.y=element_blank(),
-         panel.grid.major=element_blank(), panel.grid.minor=element_blank(),
-         legend.title = element_text(size=8),
-         legend.text = element_text(size = 7),
-         legend.key.height = unit(1.5, "cm"),
-         legend.key.width = unit(0.375, "cm"))
-
-#====Carbon 2 map====
-plot.C2  <- gplot(carbon2, maxpixels=100000) + geom_raster(aes(fill=value)) + coord_equal() +
-  scale_fill_gradient(name="Kerapatan karbon",low = "#FFCC66", high="#003300",limits=c(0,y), breaks=c(0,10,20,50,100,200,300), guide="colourbar") +
-  theme(plot.title = element_text(lineheight= 5, face="bold")) +
-  theme( axis.title.x=element_blank(),axis.title.y=element_blank(),
-         panel.grid.major=element_blank(), panel.grid.minor=element_blank(),
-         legend.title = element_text(size=8),
-         legend.text = element_text(size = 7),
-         legend.key.height = unit(1.5, "cm"),
-         legend.key.width = unit(0.375, "cm"))
-
-#====Carbon Emission Map====
-plot.E  <- gplot(emission, maxpixels=100000) + geom_raster(aes(fill=value)) + coord_equal() +
-  scale_fill_gradient(name="Emisi (ton CO2-eq)",low = "#FFCC66", high="#FF0000", guide="colourbar") +
-  theme(plot.title = element_text(lineheight= 5, face="bold")) +
-  theme( axis.title.x=element_blank(),axis.title.y=element_blank(),
-         panel.grid.major=element_blank(), panel.grid.minor=element_blank(),
-         legend.title = element_text(size=8),
-         legend.text = element_text(size = 8),
-         legend.key.height = unit(0.375, "cm"),
-         legend.key.width = unit(0.375, "cm"))
-
-#====Carbon Sequestration Map====
-plot.S  <- gplot(sequestration, maxpixels=100000) + geom_raster(aes(fill=value)) + coord_equal() +
-  scale_fill_gradient(name="Sequestrasi (ton CO2-eq)",low = "#FFCC66", high="#000033", guide="colourbar") +
-  theme(plot.title = element_text(lineheight= 5, face="bold")) +
-  theme( axis.title.x=element_blank(),axis.title.y=element_blank(),
-         panel.grid.major=element_blank(), panel.grid.minor=element_blank(),
-         legend.title = element_text(size=8),
-         legend.text = element_text(size = 8),
-         legend.key.height = unit(0.375, "cm"),
-         legend.key.width = unit(0.375, "cm"))
-
-#====Emission Rate====
+# emission rate
 emissionRate<-ggplot(data=zone_carbon, aes(x=reorder(Z_NAME, -Net_em_rate), y=(zone_carbon$Net_em_rate))) + geom_bar(stat="identity", fill="Red") +
   geom_text(data=zone_carbon, aes(label=round(Net_em_rate, 1)),size=4) +
   ggtitle(paste("Rerata laju emisi bersih", location, period1,"-", period2 )) + guides(fill=FALSE) + ylab("CO2-eq/ha.yr") +
   theme(plot.title = element_text(lineheight= 5, face="bold")) +
   theme(axis.title.x=element_blank(), axis.text.x = element_text(angle=20),
         panel.grid.major=element_blank(), panel.grid.minor=element_blank())
-
-#====Largest emission====
+# largest emission
 largestEmission<-ggplot(data=tb_em_total_10, aes(x=reorder(LU_CODE, -em), y=(em))) + geom_bar(stat="identity", fill="blue") +
   geom_text(data=tb_em_total_10, aes(x=LU_CODE, y=em, label=round(em, 1)),size=3, vjust=0.1) +
   ggtitle(paste("Sumber emisi terbesar", location )) + guides(fill=FALSE) + ylab("CO2-eq") +
   theme(plot.title = element_text(lineheight= 5, face="bold")) + scale_y_continuous() +
   theme(axis.title.x=element_blank(), axis.text.x = element_text(size=8),
         panel.grid.major=element_blank(), panel.grid.minor=element_blank())
-
-#====Largest Sequestration====
+# largest sequestration
 largestSeq<-ggplot(data=tb_seq_total_10, aes(x=reorder(LU_CODE, -seq), y=(seq))) + geom_bar(stat="identity", fill="green") +
   geom_text(data=tb_seq_total_10, aes(x=LU_CODE, y=seq, label=round(seq, 1)),size=3, vjust=0.1) +
   ggtitle(paste("Sumber sequestrasi terbesar", location )) + guides(fill=FALSE) + ylab("CO2-eq") +
@@ -1021,7 +793,6 @@ largestSeq<-ggplot(data=tb_seq_total_10, aes(x=reorder(LU_CODE, -seq), y=(seq)))
 printArea <- function(x){
   format(x, digits=15, big.mark=",")
 }
-
 printRate <- function(x){
   format(x, digits=15, nsmall=2, decimal.mark=".", big.mark=",")
 }
@@ -1037,7 +808,7 @@ tabel_ket[4,1]<-"Wilayah Analisis"
 tabel_ket[5,1]<-"Provinsi"
 tabel_ket[6,1]<-"Negara"
 
-#====Write Report====
+# write report
 title1<-"{\\colortbl;\\red0\\green0\\blue0;\\red255\\green0\\blue0;\\red146\\green208\\blue80;\\red0\\green176\\blue240;\\red140\\green175\\blue71;\\red0\\green112\\blue192;\\red79\\green98\\blue40;} \\pard\\qr\\b\\fs70\\cf2 L\\cf3U\\cf4M\\cf5E\\cf6N\\cf7S \\cf1HASIL ANALISIS \\par\\b0\\fs20\\ql\\cf1"
 title2<-paste("\\pard\\qr\\b\\fs40\\cf1 Modul QUES-C - Analisis Dinamika Cadangan Karbon \\par\\b0\\fs20\\ql\\cf1", sep="")
 sub_title<-"\\cf2\\b\\fs32 ANALISIS DINAMIKA CADANGAN KARBON\\cf1\\b0\\fs20"
@@ -1235,7 +1006,6 @@ addParagraph(rtffile, chapter3)
 addParagraph(rtffile, line)
 addNewLine(rtffile)
 addParagraph(rtffile, "Pada bagian ini disajikan hasil analisis dinamika cadangan karbon untuk masing-masing kelas unit perencanaan yang dianalisis. Beberapa bentuk analisis yang dilakukan antara lain: tingkat emisi, tingkat sequestrasi, laju emisi dan tipe perubahan penggunaan lahan yang paling banyak menyebabkan emisi/sequestrasi.")
-
 addNewLine(rtffile)
 
 z.emission.name<-as.vector(NULL)
@@ -1256,7 +1026,7 @@ for(i in 1:length(zone_lookup$ID)){
     addTable(rtffile, tabel_em_zon)
     addNewLine(rtffile, n=1)
     
-    #Largest emission
+    #largest emission
     largestE.Z<-ggplot(data=tb_em_zon, aes(x=reorder(LU_CODE, -em), y=(em))) + geom_bar(stat="identity", fill="blue") +
       geom_text(data=tb_em_zon, aes(x=LU_CODE, y=em, label=round(em, 1)),size=3, vjust=0.1) +
       ggtitle(paste("Sumber Emisi Terbesar Pada",i, "-", data_zone$Z_CODE[i] )) + guides(fill=FALSE) + ylab("CO2-eq") +
@@ -1288,7 +1058,7 @@ for(i in 1:length(zone_lookup$ID)){
     addTable(rtffile, tabel_seq_zon)
     addNewLine(rtffile, n=1)
     
-    #Largest Sequestration
+    #largest sequestration
     largestS.Z<-ggplot(data=tb_seq_zon, aes(x=reorder(LU_CODE, -seq), y=(seq))) + geom_bar(stat="identity", fill="green") +
       geom_text(data=tb_seq_zon, aes(x=LU_CODE, y=seq, label=round(seq, 1)),size=3, vjust=0.1) +
       ggtitle(paste("Sumber Sequestrasi Terbesar Pada",i, "-", data_zone$Z_CODE[i] )) + guides(fill=FALSE) + ylab("CO2-eq") +
@@ -1313,51 +1083,13 @@ for(i in 1:length(zone_lookup$ID)){
   },error=function(e){cat("Nice try pal! ~ please re-check your input data :",conditionMessage(e), "\n"); addParagraph(rtffile, "no data");addNewLine(rtffile)})
 }
 rm(largestE.Z, largestS.Z)
-
 addNewLine(rtffile)
 done(rtffile)
-
-#eval(parse(text=(paste("rtffileQUESC_", check_record, " <- rtffile", sep=""))))
-eval(parse(text=(paste("QUESC_database_", pu_name, "_", T1, "_", T2, " <- data_merge", sep=""))))
-#eval(parse(text=(paste("resave(rtffileQUESC_", check_record, ",run_record, QUESC_database_", pu_name, "_", T1, "_", T2, ", QUESC.index,lut.c, file=proj.file)", sep=""))))
-
-lut.index=lut.index+1
-resave(QUESC.index, lut.index, file=proj.file)
-#save in rdata
-
-#make lazyLoad database
-eval(parse(text=(paste("add_data<-data.frame(TBL_DATA='lut", lut.index,"', TBL_NAME='QUESC_database_", pu_name, "_", T1, "_", T2, "', row.names=NULL)", sep=""))))
-list_of_data_lut<-rbind(list_of_data_lut,add_data)
-write.table(list_of_data_lut, csv_file, quote=FALSE, row.names=FALSE, sep=",")
-
-setwd(data_dir)
-category<-"lookup_table"
-resave(list_of_data_lut, file=category)
-
-e = local({load(category); environment()})
-tools:::makeLazyLoadDB(e, category)
 
 command<-paste("start ", "winword ", dirQUESC, "/LUMENS_QUES-C_report.lpr", sep="" )
 shell(command)
 
-#====write LUMENS log file====
-# add.log<-data.frame(IDX=(QUESC.index), 
-#                     MODULE="QUES-C", 
-#                     DATE=format(Sys.time(), "%d-%m%-%Y"),
-#                     TIME=format(Sys.time(), "%X"),
-#                     LU1=data[1,1],
-#                     LU2=data[2,1],
-#                     PU=pu[1],
-#                     T1=T1,
-#                     T2=T2,
-#                     LOOKUP_LC="From DB",
-#                     LOOKUP_C=Look_up_table,
-#                     LOOKUP_ZONE="From DB",
-#                     NODATA=raster.nodata,
-#                     OUTPUT_FOLDER=dirQUESC, row.names=NULL)
-# log.quesc<-na.omit(rbind(log.quesc,add.log))
-# write.csv(log.quesc, paste(user_temp_folder,"/LUMENS/LUMENS_quesc.log", sep=""))
-
+#=Writing final status message (code, message)
 statuscode<-1
 statusmessage<-"QUES-C analysis successfully completed!"
 statusoutput<-data.frame(statuscode=statuscode, statusmessage=statusmessage)

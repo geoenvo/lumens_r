@@ -17,7 +17,7 @@ library(foreign)
 load(proj.file)
 
 #=Set PUR directory
-working_directory<-paste(dirname(proj.file),"/PUR/PUR_analysis_",PUR.index, sep="")
+working_directory<-paste(dirname(proj.file), "/PUR/", PUR.index, "_PUR_analysis", sep="")
 setwd(working_directory)
 
 time_start<-paste(eval(parse(text=(paste("Sys.time ()")))), sep="")
