@@ -112,8 +112,13 @@ if(type==0){
     eval(parse(text=(paste("list_of_data_pu<-data.frame(RST_DATA='", data_name, pu.index,"', RST_NAME=names(", data_name, pu.index, "),", "LUT_NAME='lut.pu", pu.index, "', row.names=NULL)", sep=""))))
   }
   write.table(list_of_data_pu, csv_file, quote=FALSE, row.names=FALSE, sep=",")
-
-  #check existing rdata and list of data planning unit (list_of_data_pu)
+  <<<<<<< HEAD
+  
+  #check existing rdata
+  =======
+    
+    #check existing rdata and list of data planning unit (list_of_data_pu)
+    >>>>>>> 2cc5baeb48f79e4488a08c45ef7223df8bf02dda
   file_rdata<-paste(data_dir, category, sep="")
   check_rdata<-file.exists(file_rdata)
   if(check_rdata){
@@ -125,12 +130,25 @@ if(type==0){
   #create lazyLoad database
   e = local({load(category); environment()})
   tools:::makeLazyLoadDB(e, category)
-
+  
   statuscode<-1
   statusmessage<-"planning unit has been added"
 } else if(type==2){
   category<-"factor_data"
   data_name<-"factor"
+  
+  #Defining the function to handle large raster data
+  large_rst_handler <- function(dir){
+    if(class(dir)=="character") rst.file <- raster(dir) else if (class(dir)=="RasterLayer") rst.file <- dir
+    int.m <- as.matrix(rst.file)
+    xn <- extent(rst.file)@xmin
+    xx <- extent(rst.file)@xmax
+    yn <- extent(rst.file)@ymin
+    yx <- extent(rst.file)@ymax
+    rst.obj <- raster(int.m, xmn =xn, xmx = xx, ymn = yn, ymx = yx)
+    projection(rst.obj) <- projection(rst.file)
+    return(rst.obj)
+  }
   
   #write index
   factor.index<-factor.index+1
@@ -143,6 +161,10 @@ if(type==0){
     statusmessage<-e    
   })
   
+  #Run the function to add large raster data here
+  eval(parse(text=paste0(data_name,index1,"<- large_rst_handler(dir =", data_name, index1,")")))
+  
+  
   csv_file<-paste(dirname(proj.file),"/DATA/csv_", category, ".csv", sep="")
   if(file.exists(csv_file)){
     list_of_data_f<-read.table(csv_file, header=TRUE, sep=",")
@@ -152,8 +174,13 @@ if(type==0){
     eval(parse(text=(paste("list_of_data_f<-data.frame(RST_DATA='", data_name, factor.index,"', RST_NAME=names(", data_name, factor.index, "), row.names=NULL)", sep=""))))
   }
   write.table(list_of_data_f, csv_file, quote=FALSE, row.names=FALSE, sep=",")
-
-  #check existing rdata and list of data factor (list_of_data_f)
+  <<<<<<< HEAD
+  
+  #check existing rdata
+  =======
+    
+    #check existing rdata and list of data factor (list_of_data_f)
+    >>>>>>> 2cc5baeb48f79e4488a08c45ef7223df8bf02dda
   file_rdata<-paste(data_dir, category, sep="")
   check_rdata<-file.exists(file_rdata)
   if(check_rdata){
