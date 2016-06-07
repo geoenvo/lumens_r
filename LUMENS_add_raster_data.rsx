@@ -112,13 +112,8 @@ if(type==0){
     eval(parse(text=(paste("list_of_data_pu<-data.frame(RST_DATA='", data_name, pu.index,"', RST_NAME=names(", data_name, pu.index, "),", "LUT_NAME='lut.pu", pu.index, "', row.names=NULL)", sep=""))))
   }
   write.table(list_of_data_pu, csv_file, quote=FALSE, row.names=FALSE, sep=",")
-  <<<<<<< HEAD
-  
-  #check existing rdata
-  =======
-    
-    #check existing rdata and list of data planning unit (list_of_data_pu)
-    >>>>>>> 2cc5baeb48f79e4488a08c45ef7223df8bf02dda
+
+  #check existing rdata and list of data planning unit (list_of_data_pu)
   file_rdata<-paste(data_dir, category, sep="")
   check_rdata<-file.exists(file_rdata)
   if(check_rdata){
@@ -174,13 +169,8 @@ if(type==0){
     eval(parse(text=(paste("list_of_data_f<-data.frame(RST_DATA='", data_name, factor.index,"', RST_NAME=names(", data_name, factor.index, "), row.names=NULL)", sep=""))))
   }
   write.table(list_of_data_f, csv_file, quote=FALSE, row.names=FALSE, sep=",")
-  <<<<<<< HEAD
-  
-  #check existing rdata
-  =======
-    
-    #check existing rdata and list of data factor (list_of_data_f)
-    >>>>>>> 2cc5baeb48f79e4488a08c45ef7223df8bf02dda
+
+  #check existing rdata and list of data factor (list_of_data_f)
   file_rdata<-paste(data_dir, category, sep="")
   check_rdata<-file.exists(file_rdata)
   if(check_rdata){
