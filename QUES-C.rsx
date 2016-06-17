@@ -244,7 +244,7 @@ zone_carbon$Net_em_rate<-round((zone_carbon$Net_em/zone_carbon$COUNT/period), di
 zone_carbon$Sq_tot<-round(zone_carbon$Sq_tot, digits=3)
 #zone_carbon[,4:7]<-round(zone_carbon[,4:7], digits=3)
 
-#=Calculate emission for each administrative unit====
+#=Calculate emission for each administrative unit
 admin_emission <- as.data.frame(zonal((Spat_res*emission),ref,'sum')) #adjust emission by actual raster area
 admin_sequestration <- as.data.frame(zonal((Spat_res*sequestration),ref,'sum'))#adjust sequestration by actual raster area
 colnames(admin_emission)[1] = "ID"
