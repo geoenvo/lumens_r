@@ -396,7 +396,7 @@ cat("td, th { padding: 2px 4px; }")
 cat("th { font-weight: bold;border-bottom: 1px solid #000;border-top: 1px solid #000;}")
 cat("tr:last-child td{ border-bottom: 1px solid #000; }</style><title>LUMENS Result Viewer</title></head>")
 # fill the html body
-cat("<body><p><strong><font style='color:rgb(255,0,0);'>L</font><font style='color:rgb(146,208,80);'>U</font><font style='color:rgb(0,176,240);'>M</font><font style='color:rgb(140,175,71);'>E</font><font style='color:rgb(0,112,192);'>N</font><font style='color:rgb(79,98,40);'>S</font> REPORT</strong></p>
+cat("<body><h1><strong><font style='color:rgb(255,0,0);'>L</font><font style='color:rgb(146,208,80);'>U</font><font style='color:rgb(0,176,240);'>M</font><font style='color:rgb(140,175,71);'>E</font><font style='color:rgb(0,112,192);'>N</font><font style='color:rgb(79,98,40);'>S</font> REPORT</strong><//h1>
     <p>LUMENS Project for", location,", ", province, ", ", country, "</p><div id='container'></div><img src='admin.png' />")
 # footer with javascript using D3.js
 cat("<script>

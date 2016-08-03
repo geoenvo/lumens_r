@@ -645,9 +645,9 @@ if(analysis.option==1 | analysis.option==0){
   addNewLine(rtffile)
   addParagraph(rtffile, "Pada bagian ini disajikan hasil analisa perubahan penggunaan lahan untuk masing-masing kelas unit perencanaan yang dianalisa. Beberapa bentuk analisa yang dilakukan antara lain: perbandingan luasan tutupan lahan pada periode analisa dan tipe perubahan lahan dominan pada unit perencanaan yang dianalisa")
   addNewLine(rtffile)
-  for(i in 1:length(area_zone$ID)){
+  for(i in 1:length(lookup_z$ID)){
     tryCatch({
-      zonal.db<-area_zone
+      zonal.db<-lookup_z
       zonal.db$Z_CODE<-toupper(abbreviate(zonal.db$ZONE))
       zona<-paste("\\b", "\\fs20", i, "\\b0","\\fs20")
       zona_nm<-paste("\\b", "\\fs20", zonal.db$ZONE[i], "\\b0","\\fs20")

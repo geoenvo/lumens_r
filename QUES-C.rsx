@@ -20,6 +20,7 @@ library(grid)
 library(ggplot2)
 library(spatial.tools)
 library(rtf)
+library(jsonlite)
 
 time_start<-paste(eval(parse(text=(paste("Sys.time ()")))), sep="")
 
@@ -577,7 +578,7 @@ eval(parse(text=(paste("add_data<-data.frame(TBL_DATA='lut", lut.index,"', TBL_N
 list_of_data_lut<-rbind(list_of_data_lut,add_data)
 # save list of data lookup table
 write.table(list_of_data_lut, csv_file, quote=FALSE, row.names=FALSE, sep=",")
-resave(list_of_data_lut, file=category)
+eval(parse(text=(paste("resave(list_of_data_lut, QUESC_database_", pu_name, "_", T1, "_", T2, ", file=category)", sep=""))))
 # create environment then makeLazyLoad
 e = local({load(category); environment()})
 tools:::makeLazyLoadDB(e, category)
@@ -880,22 +881,22 @@ text <- paste("\\b \\fs20 Peta penutupan lahan \\b0 \\fs20 ", area_name_rep, "\\
 addParagraph(rtffile, text)
 addNewLine(rtffile, n=1)
 addPlot.RTF(rtffile, plot.fun=plot, width=6.4, height=4, res=150, plot.LU1 )
-rm(plot.LU1)
+#rm(plot.LU1)
 text <- paste("\\b \\fs20 Peta penutupan lahan \\b0 \\fs20 ", area_name_rep, "\\b \\fs20 tahun \\b0 \\fs20 ", I_O_period_2_rep, sep="")
 addParagraph(rtffile, text)
 addNewLine(rtffile, n=1)
 addPlot.RTF(rtffile, plot.fun=plot, width=6.7, height=4, res=150, plot.LU2 )
-rm(plot.LU2)
+#rm(plot.LU2)
 text <- paste("\\b \\fs20 Peta unit perencanaan \\b0 \\fs20 ", area_name_rep, sep="")
 addParagraph(rtffile, text)
 addNewLine(rtffile, n=1)
 addPlot.RTF(rtffile, plot.fun=plot, width=6.7, height=4, res=150, plot.Z )
-rm(plot.Z)
+#rm(plot.Z)
 text <- paste("\\b \\fs20 Peta wilayah administratif \\b0 \\fs20 ", area_name_rep, sep="")
 addParagraph(rtffile, text)
 addNewLine(rtffile, n=1)
 addPlot.RTF(rtffile, plot.fun=plot, width=6.7, height=4, res=150, plot.Admin )
-rm(plot.Admin)
+#rm(plot.Admin)
 addNewLine(rtffile, n=1)
 addNewLine(rtffile, n=1)
 addNewLine(rtffile, n=1)
@@ -909,24 +910,24 @@ addNewLine(rtffile)
 text <- paste("\\b \\fs20 Peta kerapatan karbon \\b0 \\fs20 ", area_name_rep, "\\b \\fs20 tahun \\b0 \\fs20 ", I_O_period_1_rep, " \\b \\fs20 (dalam Ton C/Ha)\\b0 \\fs20", sep="")
 addParagraph(rtffile, text)
 addPlot.RTF(rtffile, plot.fun=plot, width=6.7, height=4, res=150, plot.C1 )
-rm(plot.C1)
+#rm(plot.C1)
 text <- paste("\\b \\fs20 Peta kerapatan karbon \\b0 \\fs20 ", area_name_rep, "\\b \\fs20 tahun \\b0 \\fs20 ", I_O_period_2_rep, " \\b \\fs20 (dalam Ton C/Ha)\\b0 \\fs20", sep="")
 addParagraph(rtffile, text)
 addNewLine(rtffile, n=1)
 addPlot.RTF(rtffile, plot.fun=plot, width=6.7, height=4, res=150, plot.C2 )
 addNewLine(rtffile, n=1)
-rm(plot.C2)
+#rm(plot.C2)
 text <- paste("\\b \\fs20 Peta emisi karbon \\b0 \\fs20 ", area_name_rep, "\\b \\fs20 tahun \\b0 \\fs20 ", I_O_period_1_rep, "\\b \\fs20 - \\b0 \\fs20 ", I_O_period_2_rep, sep="")
 addParagraph(rtffile, text)
 addNewLine(rtffile, n=1)
 addPlot.RTF(rtffile, plot.fun=plot, width=6.7, height=4, res=150, plot.E )
 addNewLine(rtffile, n=1)
-rm(plot.E)
+#rm(plot.E)
 text <- paste("\\b \\fs20 Peta penyerapan karbon \\b0 \\fs20 ", area_name_rep, "\\b \\fs20 tahun \\b0 \\fs20 ", I_O_period_1_rep, "\\b \\fs20 - \\b0 \\fs20 ", I_O_period_2_rep, sep="")
 addParagraph(rtffile, text)
 
 addPlot.RTF(rtffile, plot.fun=plot, width=6.7, height=4, res=150, plot.S )
-rm(plot.S)
+#rm(plot.S)
 addNewLine(rtffile, n=1)
 addNewLine(rtffile, n=1)
 addParagraph(rtffile, "\\b \\fs20 Intisari perhitungan emisi\\b0 \\fs20")
@@ -971,15 +972,15 @@ addNewLine(rtffile, n=1)
 rm(emissionRate)
 addPlot.RTF(rtffile, plot.fun=plot, width=6.7, height=4, res=150, plot.Z.Avg.C.t1 )
 addNewLine(rtffile, n=1)
-rm(plot.Z.Avg.C.t1)
+#rm(plot.Z.Avg.C.t1)
 addPlot.RTF(rtffile, plot.fun=plot, width=6.7, height=4, res=150, plot.Z.Avg.C.t2 )
 addNewLine(rtffile, n=1)
-rm(plot.Z.Avg.C.t2)
+#rm(plot.Z.Avg.C.t2)
 addPlot.RTF(rtffile, plot.fun=plot, width=6.7, height=4, res=150, plot.Z.Avg.em  )
 addNewLine(rtffile, n=1)
-rm(plot.Z.Avg.em)
+#rm(plot.Z.Avg.em)
 addPlot.RTF(rtffile, plot.fun=plot, width=6.7, height=4, res=150, plot.Z.Avg.sq )
-rm(plot.Z.Avg.sq)
+#rm(plot.Z.Avg.sq)
 addNewLine(rtffile, n=1)
 addNewLine(rtffile, n=1)
 addNewLine(rtffile, n=1)
@@ -1010,8 +1011,8 @@ addNewLine(rtffile)
 addParagraph(rtffile, "Pada bagian ini disajikan hasil analisis dinamika cadangan karbon untuk masing-masing kelas unit perencanaan yang dianalisis. Beberapa bentuk analisis yang dilakukan antara lain: tingkat emisi, tingkat sequestrasi, laju emisi dan tipe perubahan penggunaan lahan yang paling banyak menyebabkan emisi/sequestrasi.")
 addNewLine(rtffile)
 
-z.emission.name<-as.vector(NULL)
-z.seq.name<-as.vector(NULL)
+#z.emission.name<-as.vector(NULL)
+#z.seq.name<-as.vector(NULL)
 for(i in 1:length(zone_lookup$ID)){
   tryCatch({
     a<-zone_lookup$ID[i]
@@ -1036,16 +1037,11 @@ for(i in 1:length(zone_lookup$ID)){
       theme(axis.title.x=element_blank(), axis.text.x = element_text(size=8),
             panel.grid.major=element_blank(), panel.grid.minor=element_blank())
     
-    png(filename=paste("Largest_Emission_Z_",a,".png", sep=""),
-        type="cairo",
-        units="in",
-        width=6.7,
-        height=4,
-        res=125)
-    print(largestE.Z)
-    dev.off()
+    #png(filename=paste("Largest_Emission_Z_",a,".png", sep=""),type="cairo",units="in",width=6.7,height=4,res=125)
+    #print(largestE.Z)
+    #dev.off()
     
-    z.emission.name<-c(z.emission.name, paste("Largest_Emission_Z_",a,".png", sep=""))
+    #z.emission.name<-c(z.emission.name, paste("Largest_Emission_Z_",a,".png", sep=""))
     
     addPlot.RTF(rtffile, plot.fun=plot, width=6.7, height=3, res=150, largestE.Z )
     addNewLine(rtffile, n=1)
@@ -1068,16 +1064,11 @@ for(i in 1:length(zone_lookup$ID)){
       theme(axis.title.x=element_blank(), axis.text.x = element_text(size=8),
             panel.grid.major=element_blank(), panel.grid.minor=element_blank())
     
-    png(filename=paste("Largest_Seq_Z_",a,".png", sep=""),
-        type="cairo",
-        units="in",
-        width=6.7,
-        height=4,
-        res=125)
-    print(largestS.Z)
-    dev.off()
+    #png(filename=paste("Largest_Seq_Z_",a,".png", sep=""),type="cairo",units="in",width=6.7,height=4,res=125)
+    #print(largestS.Z)
+    #dev.off()
     
-    z.seq.name<-c(z.seq.name, paste("Largest_Seq_Z_",a,".png", sep=""))
+    #z.seq.name<-c(z.seq.name, paste("Largest_Seq_Z_",a,".png", sep=""))
     
     addPlot.RTF(rtffile, plot.fun=plot, width=6.7, height=3, res=150, largestS.Z )
     addNewLine(rtffile, n=1)
@@ -1090,6 +1081,287 @@ done(rtffile)
 
 command<-paste("start ", "winword ", dirQUESC, "/LUMENS_QUES-C_report.lpr", sep="" )
 shell(command)
+
+#=Create HTML result (.html)
+# save landuse/cover, planning unit, admin, carbon density, emission, sequestration map to png
+png("landuse1.png")
+plot(plot.LU1)
+dev.off()
+png("landuse2.png")
+plot(plot.LU2)
+dev.off()
+png("zone.png")
+plot(plot.Z)
+dev.off()
+png("admin.png")
+plot(plot.Admin)
+dev.off()
+png("carbon1.png")
+plot(plot.C1)
+dev.off()
+png("carbon2.png")
+plot(plot.C2)
+dev.off()
+png("emission.png")
+plot(plot.E)
+dev.off()
+png("sequestration.png")
+plot(plot.S)
+dev.off()
+png("density1.png")
+plot(plot.Z.Avg.C.t1)
+dev.off()
+png("density2.png")
+plot(plot.Z.Avg.C.t2)
+dev.off()
+png("em_rate.png")
+plot(plot.Z.Avg.em)
+dev.off()
+png("sq_rate.png")
+plot(plot.Z.Avg.sq)
+dev.off()
+# formatting table to json and save to variables  
+row.names(fs_table)<-NULL
+json_fs_table_col<-toJSON(colnames(fs_table))
+json_fs_table<-toJSON(fs_table)
+
+tb_temp<-tb_em_zonal
+tb_temp$Percentage<-NULL
+colnames(tb_temp)[1]<-"ID"
+tb_temp<-merge(tb_temp, lookup_z, by="ID")
+tb_temp$COUNT_ZONE<-tb_temp$ID<-NULL
+colnames(tb_temp)[4]<-"ZONE"
+json_tb_em_zonal<-toJSON(tb_temp)
+# copy d3.v3.min.jd from DATA directory
+file.copy(paste(processing.path, "/d3.v3.min.js", sep=""), dirQUESC)
+# write to HTML
+htmlproject<-paste(dirQUESC, "/", "report.html", sep="")
+sink(htmlproject)
+# set header
+cat("<!DOCTYPE HTML PUBLIC '-//W3C//DTD HTML 4.01//EN' 'http://www.w3.org/TR/html4/strict.dtd'>")
+cat("<html lang='en'><head><meta charset='utf-8'/><script src='d3.v3.min.js' charset='utf-8'></script><style>")
+cat("td, th { padding: 2px 4px; }")
+cat("th { font-weight: bold;border-bottom: 1px solid #000;border-top: 1px solid #000;}")
+cat("tr:last-child td{ border-bottom: 1px solid #000; }")
+cat(".bar { fill: steelblue;  } .bar:hover { fill: brown;  }
+.axis { font: 12px sans-serif; }
+.axis path, .axis line { fill: none; stroke: #000; shape-rendering: crispEdges; }
+.x.axis path { display: none;  }
+div.tooltip {	
+position: absolute;			
+text-align: center;			
+width: 250px;					
+height: 28px;					
+padding: 2px;				
+font: 12px sans-serif;		
+background: lightsteelblue;	
+border: 0px;		
+border-radius: 4px;			
+pointer-events: none; }")
+cat("</style><title>QUES-C Result Viewer</title></head>")
+# fill the html body
+cat("<body><h1><strong><font style='color:rgb(255,0,0);'>L</font><font style='color:rgb(146,208,80);'>U</font><font style='color:rgb(0,176,240);'>M</font><font style='color:rgb(140,175,71);'>E</font><font style='color:rgb(0,112,192);'>N</font><font style='color:rgb(79,98,40);'>S</font> QUES-C REPORT</strong></h1>
+    <p>Analisis Dinamika Cadangan Karbon</p>")
+cat("<h2>DATA YANG DIGUNAKAN</h2>
+    <h3>Peta penutupan lahan ", location, " tahun ", T1, "</h3>",
+    "<img src='landuse1.png' />
+    <br/><h3>Peta penutupan lahan ", location, " tahun ", T2, "</h3>", 
+    "<img src='landuse2.png' />
+    <br/><h3>Peta unit perencanaan ", location, "</h3>", 
+    "<img src='landuse1.png' />
+    <br/><h3>Peta wilayah administratif ", location, "</h3>", 
+    "<img src='admin.png' />
+    <br/>")
+cat("<h2>ANALISIS PADA TINGKAT BENTANG LAHAN</h2>")
+cat("<h3>Intisari perhitungan emisi</h3>")
+cat("<div id='intisari'></div>")
+# footer with javascript using D3.js
+cat("<p id='menu'><b>ANALISIS PADA TINGKAT UNIT PERENCANAAN</b><br/>Sumber emisi terbesar pada: <select></select></p>")
+cat("<table></table>")
+cat("<svg class='histogram'></svg>")
+cat("<script>var data =", json_tb_em_zonal, ";")
+cat("
+var margin = { top: 20, right: 20, bottom:40, left: 80 },
+    width = 960 - margin.left - margin.right,
+height = 500 - margin.top - margin.bottom;
+
+var x = d3.scale.ordinal()
+.rangeRoundBands([0, width], .1);
+
+var y = d3.scale.linear()
+.range([height, 0]);
+
+var xAxis = d3.svg.axis()
+.scale(x)
+.orient('bottom');
+
+var yAxis = d3.svg.axis()
+.scale(y)
+.orient('left');
+
+var div = d3.select('body').append('div')
+.attr('class', 'tooltip')
+.style('opacity', 0);
+
+var svg = d3.select('.histogram')
+.attr('width', width + margin.left + margin.right)
+.attr('height', height + margin.top + margin.bottom)
+.append('g')
+.attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
+
+svg.append('g')
+.attr('class', 'x axis')
+.attr('transform', 'translate(0,' + height + ')')
+svg.append('text')
+.attr('x', width/2)
+.attr('y', height + margin.bottom - 5)
+.style('text-anchor', 'middle')
+.text('Land use change');
+
+svg.append('g')
+.attr('class', 'y axis')
+svg.append('text')
+.attr('y', 0 - margin.left)
+.attr('x', 0 - (height / 2))
+.attr('transform', 'rotate(-90)')
+.attr('dy', '.71em')
+.style('text-anchor', 'end')
+.text('Emission (CO2-eq)');
+
+var nest = d3.nest()
+.key(function(d){ return d.ZONE; })
+.map(data);
+
+var zonalEmissionTable = d3.keys(nest).filter(function(key){
+return key;  
+});
+
+var menu = d3.select('#menu select')
+.on('change', redraw);
+
+menu.selectAll('option')
+.data(zonalEmissionTable)
+.enter().append('option')
+.text(function(d){ return d; });
+
+menu.property('value', zonalEmissionTable[0]);
+
+var table = d3.select('table');
+var columns = ['LU_CODE', 'LU_CHG', 'ZONE', 'em'];
+table.append('thead')
+.append('tr')
+.selectAll('th')
+.data(columns)
+.enter()
+.append('th')
+.text(function(column){ return column; })
+
+table.append('tbody');    
+
+redraw();
+
+function redraw(){
+  var zone = menu.property('value'),
+  selectedZone = nest[zone];
+  
+  var rows = table.select('tbody')
+  .selectAll('tr')
+  .data(selectedZone);
+  
+  var cells = rows.selectAll('td')
+  .data(function(row){
+    return columns.map(function(column){
+      return {
+        column: column,
+        value: row[column]
+      }
+    });
+  });
+  
+  cells.enter().append('td')
+  
+  cells.text(function(d){ return d.value;  });
+  
+  cells.exit().remove();
+  
+  var cells_in_new_rows = rows.enter().append('tr')
+  .selectAll('td')
+  .data(function(row){
+    return columns.map(function(column){
+      return {
+        column: column,
+        value: row[column]
+      }
+    });
+  });
+  
+  cells_in_new_rows.enter().append('td')
+  
+  cells_in_new_rows.text(function(d){ return d.value; });
+  
+  rows.exit().remove();
+  
+  x.domain(selectedZone.map(function(d) { return d.LU_CODE; }));
+  y.domain([0, d3.max(selectedZone, function(d){ return d.em; })]);
+  
+  var bar = svg.selectAll('.bar')
+  .data(selectedZone)
+  
+  bar.enter().append('rect')
+  .attr('class', 'bar')
+  
+  bar.attr('x', function(d) { return x(d.LU_CODE); })
+  .attr('width', x.rangeBand())
+  .attr('y', function(d){ return y(d.em); })
+  .attr('height', function(d){ return height - y(d.em);})
+  .on('mouseover', function(d){
+    div.transition()
+    .duration(200)
+    .style('opacity', .9);
+    div .html((d.LU_CHG))
+    .style('left', (d3.event.pageX) + 'px')
+    .style('top', (d3.event.pageY - 30) + 'px');
+  })
+  .on('mouseout', function(d) {
+    div.transition()
+    .duration(500)
+    .style('opacity', 0)
+  });
+  
+  bar.exit()
+  .remove();
+  
+  d3.select('.x.axis')
+  .call(xAxis);
+  
+  d3.select('.y.axis')
+  .call(yAxis);
+  
+}  
+    
+function tabulate(data, columns) {
+  var table = d3.select('#intisari').append('table'),
+  thead = table.append('thead'),
+  tbody = table.append('tbody');
+  
+  thead.append('tr').selectAll('th').data(columns).enter().append('th').text(function(column) { return column; });
+  
+  var rows = tbody.selectAll('tr').data(data).enter().append('tr');
+  
+  var cells = rows.selectAll('td')
+    .data(function(row) {
+      return columns.map(function(column) {
+      return {column: column, value: row[column]};
+    });
+    }).enter().append('td').text(function(d) { return d.value; });
+  return table;
+}
+")
+cat("var fsTbl =", json_fs_table, ";
+var fsTblTable = tabulate(fsTbl,", json_fs_table_col, ");")
+cat("</script></body></html>")
+sink()
+
 
 #=Writing final status message (code, message)
 statuscode<-1

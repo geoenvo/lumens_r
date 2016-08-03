@@ -116,24 +116,25 @@ ref2[isZero(ref2)]<-NA
 command1 <- paste()
 command2 <- paste()
 #command3 <- paste()
+cmd <- paste()
 for(j in 1:nrow(data)) {
   input <- as.character(data[j,1])
-  if(input=="Peat_1"){
-    #eval(parse(text=(paste(input, "<-spatial_sync_raster(", input, ',ref2, method = "ngb")', sep=""))))
-    eval(parse(text=(paste(input, "[is.na(", input, ")]<-0", sep="")))) 
-  } else {
-    #eval(parse(text=(paste(input, "<-spatial_sync_raster(", input, ',ref2, method = "ngb")', sep=""))))
+  
+  if(input=="ref"){
     eval(parse(text=(paste(input, "[isZero(", input, ")]<-NA", sep="")))) 
   }
   
+  eval(parse(text=(paste("R", j, "<-", input, "*(100^(", j-1, "))", sep=""))))
   if (j != nrow(data)) {
     command1<-paste(command1, input, ",", sep="")
     command2<-paste(command2, input, "[]", ",", sep="")
     #command3<-paste(command3, "Var", j, ",", sep="")
+    cmd<-paste(cmd,"R", j, "+", sep="")
   } else {
     command1<-paste(command1, input, sep="")
     command2<-paste(command2, input, "[]", sep="")
     #command3<-paste(command3, "Var", j, sep="")
+    cmd<-paste(cmd,"R", j, sep="")
   }
 }
 
@@ -144,18 +145,34 @@ dir.create(workdir, mode="0777")
 setwd(workdir)
 
 #====COMBINE PLANNING UNIT FILES====
-Combine<-ref2
-eval(parse(text=(paste("Combine[] <- as.integer(interaction(", command2, "))", sep="")))) 
-Combine <- ratify(Combine, filename='Combine.grd', count=TRUE, overwrite=TRUE) 
 eval(parse(text=(paste("Combine_stack <- stack(", command1, ")", sep="")))) 
-Combine_db <- as.data.frame(crosstab(Combine_stack))
+eval(parse(text=(paste("Combine<-", cmd, sep=""))))
+Combine <- ratify(Combine, count=TRUE)
+Combine_db <- levels(Combine)[[1]]
+
+ORI_ID<-Combine_db$ID
+NEW_ID<-seq(nrow(Combine_db)) 
+rclmat<-cbind(as.matrix(ORI_ID), as.matrix(NEW_ID)) 
+Combine<-reclassify(Combine, rclmat)
+Combine<-ratify(Combine, count=TRUE)
+
+Combine_db$NEW_ID<-NEW_ID
+Combine_db$TEMP_ID<-Combine_db[,1]
+k<-0
+while(k < nrow(data)) {
+  eval(parse(text=(paste("Combine_db$Var", k, "<-Combine_db$TEMP_ID %% 100", sep=""))))  
+  Combine_db$TEMP_ID<-floor(Combine_db$TEMP_ID/100)
+  k=k+1
+}
+Combine_db$TEMP_ID<-NULL
+
 #urutin kolom
 # names(Combine_db)[ncol(Combine_db)-1]
 # Combine_db<-Combine_db[with(Combine_db, order(layer.2)), ]
 combine_name<-""
 for (x in 1:nrow(data)) {
   eval(parse(text=(paste("name<-data[", x, ", 1]", sep=""))))
-  eval(parse(text=(paste("colnames(Combine_db)[",x,"]<-name", sep=""))))
+  eval(parse(text=(paste("colnames(Combine_db)[",x+3,"]<-name", sep=""))))
   eval(parse(text=(paste("alias<-data[", x, ", 2]", sep=""))))
   if(x == 1){
     combine_name<-paste(combine_name, alias, sep="")
@@ -164,26 +181,17 @@ for (x in 1:nrow(data)) {
   }
   #eval(parse(tex=(paste("Combine_db$", name, "[is.na(Combine_db$", name, ")]<-0", sep=""))))
 }
-eval(parse(text=(paste("Combine_db <- transform(Combine_db, unique_id=as.integer(interaction(", command1, ", drop=TRUE)))", sep="")))); 
-Combine_db <- Combine_db[ which(Combine_db$Freq > 0),] 
+Combine_db <- Combine_db[ which(Combine_db$COUNT > 0),] 
 Combine_db<-na.omit(Combine_db) #keep all data, na dijadiin opsi
 
 #looping untuk membuat kolom baru dengan nama attribute baru
 for(i in 1:nrow(Combine_db)){
   sublabel=NULL
-  for(j in ref.ind:nrow(data)){
-    if(ref.ind==0){ 
-      k=j+1 
-      if(j==nrow(data)){
-        break
-      }
-    } else {
-      k=j 
-    }
+  for(j in 1:nrow(data)){
     #get label from pu LUT
     eval(parse(text=(paste("comb_name<-data[", j, ",3]", sep=""))))
     eval(parse(text=(paste("pu_name<-colnames(", comb_name, ")[1]", sep=""))))
-    eval(parse(text=(paste("pu_label <- ", comb_name, "[which(Combine_db[",i, ",", k, "]==", comb_name, "$", pu_name, "),]", sep=""))))
+    eval(parse(text=(paste("pu_label <- ", comb_name, "[which(Combine_db[",i, ",", j+3, "]==", comb_name, "$", pu_name, "),]", sep=""))))
     #append label
     if(j==nrow(data)){
       sublabel<-paste(sublabel, as.character(pu_label$label), sep="")
@@ -195,13 +203,15 @@ for(i in 1:nrow(Combine_db)){
   }
 }
 
+colnames(Combine_db)[3]<-"unique_id"
 Combine_db2<-Combine_db[,c('unique_id','Combined')]
+Combine_db3<-Combine_db[,c('ID','COUNT','unique_id','Combined')]
 colnames(Combine_db2)[1]= "ID"
 test1<-unique(Combine_db2)[1]
 test2<-unique(Combine_db2)[2]
 test3<-cbind(test1,test2)
 row.names(test3)<-NULL
-#levels(Combine)<-merge(levels(Combine),test3,by="ID")  #ini buat bikin polygon hasil combine, tapi belum berhasil
+#levels(Combine)<-merge(levels(Combine),test3,by="ID") 
 Combine1 <- deratify(Combine,'ID')
 names(Combine1)<-combine_name
 
@@ -279,7 +289,7 @@ addNewLine(rtffile)
 addNewLine(rtffile)
 addPlot.RTF(rtffile, plot.fun=plot, width=6.7, height=3.73, res=150, plot.PUR.Comb )
 addNewLine(rtffile)
-addTable(rtffile, Combine_db)
+addTable(rtffile, Combine_db3)
 addNewLine(rtffile)
 
 done(rtffile)
