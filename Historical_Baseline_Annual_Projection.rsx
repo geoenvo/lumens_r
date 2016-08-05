@@ -1,6 +1,10 @@
-##[SCIENDO]=group
+##Alpha - SCIENDO=group
+##proj.file=string
+##csv_ques_c_db==string
 ##iteration=number 10
+##statusoutput=output table
 
+#=Load library
 library(ggplot2)
 library(foreign)
 library(rtf)
@@ -8,85 +12,46 @@ library(sp)
 library(raster)
 library(reshape)
 library(reshape2)
-library(tcltk)
 #include_peat=1
 
 time_start<-paste(eval(parse(text=(paste("Sys.time ()")))), sep="")
 
-#READ LUMENS LOG FILE
-user_temp_folder<-Sys.getenv("TEMP")
-if(user_temp_folder=="") {
-  user_temp_folder<-Sys.getenv("TMP")
-}
-LUMENS_path_user <- paste(user_temp_folder,"/LUMENS/LUMENS.log", sep="")
-log.file<-read.table(LUMENS_path_user, header=FALSE, sep=",")
-proj.file<-paste(log.file[1,1], "/", log.file[1,2],"/",log.file[1,2], ".lpj", sep="")
+#=Load active project
 load(proj.file)
 
+#=Read selected QUES-C database
+QUESC_list<-read.table(csv_ques_c_db, sep=",")
+colnames(QUESC_list)="Database"
 
-substrRight <- function(x, n){
-  substr(x, nchar(x)-n+1, nchar(x))
-}
+#=Set working directory to DATA folder
+data_dir<-paste(dirname(proj.file), "/DATA/", sep="")
 
-# SELECTING AVAILABLE QUES-C ANALYSIS
-QUESC_list<-as.data.frame(ls(pattern="QUESC_database"))
-colnames (QUESC_list) [1]<-"Data"
-QUESC_list$Usage<-0
+#=Retrieve all list of data that are going to be used
+# list_of_data_lut ==> list of data lookup table
+get_from_rdb(symbol=paste("list_of_data_lut"), filebase=paste(data_dir, "lookup_table", sep=""))
+get_from_rdb(symbol=paste("list_of_data_pu"), filebase=paste(data_dir, "planning_unit", sep=""))
 
-QUESC_list_n<-nrow(QUESC_list)
-if(QUESC_list_n<2){
-  msgBox <- tkmessageBox(title = "QUES",
-                         message = "Minimum two QUES-C Analysis Result required",
-                         icon = "info",
-                         type = "ok")
-  quit()
-}
-
-repeat{
-  QUESC_list<-edit(QUESC_list)
-  if(sum(QUESC_list$Usage)>1){
-    break
-  } else {
-    msgBox <- tkmessageBox(title = "Annual projection",
-                           message = "Choose at least two QUES-C database. Retry?",
-                           icon = "question", 
-                           type = "retrycancel", default="retry")
-    if(as.character(msgBox)=="cancel"){
-      quit()
-    }
-  }
-}
-
-QUESC_list <- QUESC_list[which(QUESC_list$Usage==1),]
-QUESC_list$Usage<-NULL
+#=Set all initial data, values, and working directory
 QUESC_list_n<-nrow(QUESC_list)
 dbase_all<-NULL
-
-data<-as.character(QUESC_list [QUESC_list_n,1])
+# periods and planning unit name
+data<-as.character(QUESC_list[QUESC_list_n,1]) # get the last transition period as a central data
 n_dta<-nchar(data)
 t1<-as.integer(substr(data, (n_dta-8):(n_dta-5), (n_dta-5)))
 t2<-as.integer(substr(data, (n_dta-3):n_dta, n_dta))
 pu_name<-substr(data, 16:(n_dta-10), (n_dta-10))
-pu_list<-as.data.frame(ls(pattern="pu_pu"))
-colnames(pu_list)[1]<-"PU"
-pu_list$PU<-as.character(pu_list$PU)
-pu_list$Name<-"name"
-pu_list$LUT<-"LUT"
-for(i in 1:nrow(pu_list)){
-  eval(parse(text=(paste("pu_list[",i,",2]<-names(",pu_list$PU[i],")", sep=""))))
-  eval(parse(text=(paste("pu_list[",i,",3]<-'lut.pu",i,"'",sep=""))))
-}
-pu_list<-rbind(pu_list, c("ref", names(ref), "p.admin.df"))
-pu_selected<-pu_list[which(pu_list$Name==pu_name),]
-eval(parse(text=(paste("lut.pu<-", pu_selected$LUT ,sep=""))))
-
+# lookup table
+pu_lut<-list_of_data_pu[which(list_of_data_pu$RST_NAME==pu_name),]
+get_from_rdb(symbol=paste(pu_lut$LUT_NAME), filebase=paste(data_dir, "planning_unit", sep=""))
+eval(parse(text=(paste("lut.pu<-", pu_lut$LUT_NAME))))
+# new directory 
 SCIENDO1.index=SCIENDO1.index+1
 dirAnnual<-paste(dirname(proj.file), "/SCIENDO/Annual_", pu_name, SCIENDO1.index, sep="")
 dir.create(dirAnnual, mode="0777")
 setwd(dirAnnual)
 workingDirectory<-dirAnnual
 
-#====CREATE RUNNING RECORD====
+#=Create running record
 # check_record <- paste(t2-1, t2, pu_name, sep="")
 # if(exists("run_record")){
 #   rec_selected <- run_record[which(run_record$rec==check_record & run_record$modul=="Annual"),]
@@ -125,12 +90,14 @@ workingDirectory<-dirAnnual
 #   colnames(run_record)[5] <- "modul"
 # }
 
-
+#=Combine all database, calculate TPM and predicted area
+get_from_rdb(symbol=paste(data), filebase=paste(data_dir, "lookup_table", sep=""))
 eval(parse(text=(paste("central_data<-", data, sep=""))))
 central_data$key<- do.call(paste, c(central_data[c("LU_CHG", "Z_NAME")], sep = " in "))
-
 for(i in 1:QUESC_list_n) {
-  data<-as.character(QUESC_list [i,1])
+  data<-as.character(QUESC_list[i,1])
+  data_lut<-list_of_data_lut[which(list_of_data_lut$TBL_NAME==data),]
+  get_from_rdb(symbol=paste(data_lut$TBL_NAME[1]), filebase=paste(data_dir, "lookup_table", sep="")) # get the first if it has duplicates
   n_dta<-nchar(data)
   t1<-as.integer(substr(data, (n_dta-8):(n_dta-5), (n_dta-5)))
   t2<-as.integer(substr(data, (n_dta-3):n_dta, n_dta))
@@ -504,3 +471,8 @@ done(rtffile)
 
 command<-paste("start ", "winword ", dirAnnual, "/LUMENS_SCIENDO-Annual_Projection_report.lpr", sep="" )
 shell(command)
+
+#=Writing final status message (code, message)
+statuscode<-1
+statusmessage<-"QUES-C analysis successfully completed!"
+statusoutput<-data.frame(statuscode=statuscode, statusmessage=statusmessage)

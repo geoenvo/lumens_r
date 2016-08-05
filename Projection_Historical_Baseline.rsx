@@ -2,6 +2,7 @@
 ##proj.file=string
 ##ques_c_db=string
 ##iteration=number 5
+##statusoutput=output table
 
 #====LOAD LIBRARY====
 library(plyr)
@@ -10,7 +11,6 @@ library(reshape)
 library(ggplot2)
 library(foreign)
 library(rtf)
-library(tcltk)
 
 time_start<-paste(eval(parse(text=(paste("Sys.time ()")))), sep="")
 
@@ -630,3 +630,8 @@ colnames(zone)[2]<-"Z_NAME"
 eval(parse(text=(paste('SCIENDO_PeriodDB', SCIENDO1.index, '<-merge(SCIENDO_PeriodDB', SCIENDO1.index, ', zone, by="zone")', sep=""))))
 
 eval(parse(text=(paste("write.dbf(SCIENDO_PeriodDB", SCIENDO1.index, ",'SCIENDO_PeriodDB.dbf')", sep=""))))
+
+#=Writing final status message (code, message)
+statuscode<-1
+statusmessage<-"QUES-C analysis successfully completed!"
+statusoutput<-data.frame(statuscode=statuscode, statusmessage=statusmessage)
