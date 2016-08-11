@@ -69,10 +69,12 @@ if (data_pu$RST_DATA=="ref") {
 }
 # landuse first time period
 get_from_rdb(symbol=paste(data_luc1$RST_DATA), filebase=paste(data_dir, "land_use_cover", sep=""))
+get_from_rdb(symbol=paste(data_luc1$LUT_NAME), filebase=paste(data_dir, "land_use_cover", sep=""))
 eval(parse(text=(paste("landuse1<-", data_luc1$RST_DATA, sep=""))))
 landuse1[landuse1==0]<-NA
 # landuse second time period
 get_from_rdb(symbol=paste(data_luc2$RST_DATA), filebase=paste(data_dir, "land_use_cover", sep=""))
+get_from_rdb(symbol=paste(data_luc2$LUT_NAME), filebase=paste(data_dir, "land_use_cover", sep=""))
 eval(parse(text=(paste("landuse2<-", data_luc2$RST_DATA, sep=""))))
 landuse2[landuse2==0]<-NA
 # landcover lookup table
