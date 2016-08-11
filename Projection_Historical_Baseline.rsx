@@ -4,7 +4,7 @@
 ##iteration=number 5
 ##statusoutput=output table
 
-#====LOAD LIBRARY====
+#=Load library
 library(plyr)
 library(reshape2)
 library(reshape)
@@ -14,7 +14,7 @@ library(rtf)
 
 time_start<-paste(eval(parse(text=(paste("Sys.time ()")))), sep="")
 
-#=Load library
+#=Load active project
 load(proj.file)
 
 #=Set working directory to DATA folder
@@ -122,7 +122,7 @@ if(nrow(data2.cek2)!=0){
 data2.cek<-rbind(data2.cek1,data2.cek2)
 data2.cek$CEK<-NULL
 # merge data2 with data-bound table
-data3<-merge(data2,data2.cek, by=c("ID_LC1", "ZONE"))
+data3<-merge(data2, data2.cek, by=c("ID_LC1", "ZONE"))
 data3.cek1<-subset(data3, ACT=="Fix")
 data3.cek2<-subset(data3, ACT=="Ignore")
 # finally, find unchanged land use/cover in fix-checked table
@@ -410,7 +410,7 @@ pu_sq0 <- pu_sq0[order(-pu_sq0$Percentage),]
 # command<-paste("start ", "winword ", result_dir, "/LUMENS_SCIENDO-PHB_report.lpr", sep="" )
 # shell(command)
 
-#=Create .CAR file for new version of REDD Abacus====
+#=Create .CAR file for new version of REDD Abacus
 # check existing land use/cover from two period of time
 pu <- melt(data = data2, id.vars=c('ZONE','Z_NAME'), measure.vars=c('COUNT'))
 pu <- dcast(data = pu, formula = Z_NAME + ZONE ~ variable, fun.aggregate = sum )
